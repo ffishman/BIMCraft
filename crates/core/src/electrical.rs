@@ -1,8 +1,8 @@
 //! The electrical settings of a project, as Revit's Electrical Settings keep them: the voltages (each with the band a device may
 //! read within), the distribution systems (phases and wires, and the voltages each supplies) and the wire types (a conductor's
 //! material, insulation and working temperature, and the ampacity of each section). They are project data that circuits, panels
-//! and connectors will refer to by name; nothing here draws, and none of it goes to IFC. A distribution board's own data, which
-//! names them, is [`Panel`].
+//! and connectors refer to by name; the tables themselves draw nothing and don't go to IFC. A distribution board's own data,
+//! which names them, is [`Panel`]; the circuits on it are [`Circuit`].
 //!
 //! A new project starts with the set in `data/electrical.json`, which is data and not code: voltages and systems of Europe,
 //! Brazil and North America, and copper wires of the NBR 5410 tables (PVC 70 °C, XLPE or EPR 90 °C) and of the NEC (THHN and THW),
