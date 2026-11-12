@@ -13,9 +13,11 @@ DXF export is on the README's "Next, in order" list and was the "still to come" 
 - **Layers by category**: each element's lines go on its category's layer, or the subcategory it's drawn in (`wall`, `door`, `dooropening`), what the view cuts on `<category>-cut`, patterns on `<category>-pattern`, lettering on `<category>-text` (a text note's on `text`), and what no element draws on `annotation`. This is the layering people expect from Revit's DWG export (category, with cut and projection split) without inventing a layer standard; a mapping table (AIA, NBR 13532, ISO 13567) could come later as data.
 - **Lines** are LWPOLYLINEs in their true colour, with the standard line weight nearest their width on paper (`dxf_out::lineweight`) and their dashes as a linetype in model millimetres (`BIM_DASH_n`). **Fills** (the walls' poché) are solid HATCHes, the first ring the outline and the rest holes.
 
+- **An imported CAD drawing** (Import CAD / Link CAD) is written from its own entities rather than from what the plan draws of it: each on its own layer (less those the import or the view hides), placed, turned and scaled as it sits in the project, its lettering as TEXT. So a DWG brought in goes back out with its layers and text, at about its own size. A line or a ring of no length is left out, since readers take it as an empty entity.
+
 ### What is approximate, and what is left out
 
-- Lettering is written as our own font's strokes, as in the PDF, not as TEXT entities: it looks the same everywhere but can't be edited as text. TEXT/MTEXT with a style is a follow-up.
+- The model's own lettering (tags, room names, dimensions' text) is written as our own font's strokes, as in the PDF, not as TEXT entities: it looks the same everywhere but can't be edited as text. TEXT/MTEXT with a style is a follow-up.
 - A picture (an image underlay) can't be written; it is counted in the reply's `left_out`.
 - Plans only, as for .svg/.png; sections, elevations and sheets (paper space) can follow the same path.
 
