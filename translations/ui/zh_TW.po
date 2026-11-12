@@ -3114,7 +3114,7 @@ msgstr "已拆除"
 msgid "Demolition"
 msgstr "拆除"
 
-#: crates/core/src/commands.rs:11423
+#: crates/core/src/commands.rs:11426
 msgid "Dependent"
 msgstr "相關"
 
@@ -8304,7 +8304,7 @@ msgid "Properties over the Project Browser, on the left, as at first"
 msgstr "“屬性”在“項目瀏覽器”之上、位於左側，與最初一樣"
 
 #: crates/core/src/commands.rs:524
-#: crates/core/src/commands.rs:7800
+#: crates/core/src/commands.rs:7803
 msgid "Property Line"
 msgstr ""
 
@@ -11373,7 +11373,7 @@ msgstr ""
 msgid "Unlock alignment"
 msgstr "解鎖對齊"
 
-#: crates/core/src/commands.rs:11594
+#: crates/core/src/commands.rs:11597
 msgid "Unnamed"
 msgstr "未命名"
 
