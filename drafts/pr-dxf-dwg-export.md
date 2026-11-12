@@ -58,7 +58,7 @@ DXF export is on the README's "Next, in order" list and was the "still to come" 
 | ODA File Converter, audit on, 75 picked (every one with any warning, the 10 largest, CJK text, one per version × program, the real projects, 5 at random) | 75 of 75 converted, no error report, entity counts equal to ours |
 | LibreDWG `dwgread` | 16 warnings, the same files before and after: a polyline of 72,700 vertices far from the origin, past one of its sanity limits |
 | Reopened in BIMCraft | all but 8, each past the reader's 128 MB (see above) |
-| The source's layers kept | 2.8 per file before → 26.8 after (on a real electrical plan, 3 → 107) |
+| The source's layers kept | 15.9 per file on average; on the public bodies' files 2.8 before → 26.8 after (on a real electrical plan, 3 → 107) |
 | Empty entities on reading back | 36 → 6, the 6 left being still under review |
 
 ### Both
