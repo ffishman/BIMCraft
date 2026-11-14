@@ -1,6 +1,7 @@
 //! An `IfcMember` that frames (a brace, a purlin, a member of no type), part of no element but an assembly, and runs along a
 //! line a beam can, comes in as a beam; a mullion, a post, a member a user's type names, one that stands, and one inside a
-//! curtain wall stay generic components that remember their class. Written by hand.
+//! curtain wall stay generic components that remember their class; so does a beam that stands or slopes past a beam's 75°.
+//! Written by hand.
 
 use crate::ifc_geometry_tests::G;
 use crate::model::Element;
@@ -10,7 +11,13 @@ type Line = (String, [f64; 2], [f64; 2], f64, Option<f64>);
 
 /// A member of predefined type `kind` (`$` for none) and object type `object` named `name`: a section `w` wide and `d` deep
 /// along the line from `a` to `b`, its profile square to it, as exporters write a member.
-fn member(g: &mut G, name: &str, kind: &str, object: &str, a: [f64; 3], b: [f64; 3], (w, d): (f64, f64)) -> u32 {
+fn member(g: &mut G, name: &str, kind: &str, object: &str, a: [f64; 3], b: [f64; 3], section: (f64, f64)) -> u32 {
+    element(g, "IFCMEMBER", name, kind, object, a, b, section)
+}
+
+/// An element of `class`, as [`member`] makes a member.
+#[allow(clippy::too_many_arguments)]
+fn element(g: &mut G, class: &str, name: &str, kind: &str, object: &str, a: [f64; 3], b: [f64; 3], (w, d): (f64, f64)) -> u32 {
     let along = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
     let length = (along[0].powi(2) + along[1].powi(2) + along[2].powi(2)).sqrt();
     let z = along.map(|v| v / length);
@@ -27,7 +34,7 @@ fn member(g: &mut G, name: &str, kind: &str, object: &str, a: [f64; 3], b: [f64;
     let shape = g.add(&format!("IFCPRODUCTDEFINITIONSHAPE($,$,(#{rep}))"));
     let place = g.add("IFCLOCALPLACEMENT(#6,#5)");
     let id = g.next + 1;
-    let made = g.add(&format!("IFCMEMBER('{id:0>22}',$,'{name}',$,{object},#{place},#{shape},$,{kind})"));
+    let made = g.add(&format!("{class}('{id:0>22}',$,'{name}',$,{object},#{place},#{shape},$,{kind})"));
     g.contained.push(made);
     made
 }
@@ -84,5 +91,32 @@ fn a_member_that_frames_along_a_line_comes_in_as_a_beam_and_any_other_stays_gene
         .collect();
     for name in ["Post", "Sun fin", "Standing", "Mullion", "Transom"] {
         assert!(generic.iter().any(|(f, k)| f == name && k.as_deref() == Some("IFCMEMBER")), "{name}: {generic:?}");
+    }
+}
+
+#[test]
+fn a_beam_that_stands_or_slopes_past_a_beams_comes_in_generic_with_its_class_not_left_out() {
+    let mut g = G::new();
+    element(&mut g, "IFCBEAM", "Beam", ".BEAM.", "$", [0.0, 0.0, 3000.0], [4000.0, 0.0, 3000.0], (150.0, 300.0));
+    // A stud and a steep hanger, as Tekla writes them: beams by class, standing or near it.
+    element(&mut g, "IFCBEAM", "STUD", ".BEAM.", "$", [0.0, 2000.0, 0.0], [0.0, 2000.0, 2500.0], (90.0, 90.0));
+    element(&mut g, "IFCBEAM", "HANGER", ".BEAM.", "$", [2000.0, 2000.0, 0.0], [2100.0, 2000.0, 2500.0], (60.0, 60.0));
+    let i = g.import();
+    let m = &i.model;
+    assert_eq!(m.elements.values().filter(|e| matches!(e, Element::Beam(_))).count(), 1, "{:?}", i.skipped);
+    assert!(!i.skipped.iter().any(|s| s.contains("what stands is a column")), "{:?}", i.skipped);
+    let generic: Vec<(String, Option<String>)> = m
+        .elements
+        .values()
+        .filter_map(|e| match e {
+            Element::Component(c) => {
+                let f = m.families.get(&c.family)?;
+                Some((c.family.clone(), f.ifc.as_ref().map(|k| k.class.clone())))
+            }
+            _ => None,
+        })
+        .collect();
+    for name in ["STUD", "HANGER"] {
+        assert!(generic.iter().any(|(f, k)| f == name && k.as_deref() == Some("IFCBEAM")), "{name}: {generic:?}");
     }
 }

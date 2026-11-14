@@ -2840,8 +2840,15 @@ pub(crate) fn from_step(file: File, name: &str, seed: u64) -> Result<Imported, S
         let found = run_in(&pts, along);
         let geom = found.as_ref().map(|f| crate::runs::Geom { a: f.start, b: f.end, width: f.width, depth: f.depth, round: f.round });
         let ruled = geom.map(|g| crate::runs::check(&who(id), category, &g));
-        // A member that is no beam's line is left for the generic components.
+        // A member that is no beam's line is left for the generic components; so is a beam that stands or slopes past what a
+        // beam may (a stud, a hanger, a steep brace, as Tekla files hold them), which comes in with its body and its class rather
+        // than being left out.
         if member && !matches!(ruled, Some(Ok(()))) {
+            continue;
+        }
+        if let Some(Err(why)) = &ruled
+            && why.ends_with("what stands is a column")
+        {
             continue;
         }
         let Some(found) = found else {
