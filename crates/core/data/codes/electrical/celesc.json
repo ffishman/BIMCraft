@@ -6,9 +6,10 @@
  "edition": "N-321.0003",
  "amends": "nbr-5410",
  "references": [
+  "Celesc N-321.0001, revision of December 2025 (RES. DCL nº 143/2025)",
   "Celesc Distribuição N-321.0003 (revision December 2023, RES. DCL 235/2023), item 5.6.2"
  ],
- "note": "The utility's own standard over NBR 5410. A building's demand by its method (`building_demand`).",
+ "note": "The utility's own standard over NBR 5410. A unit's category by its installed load (N-321.0001, Tabela 01, `service`) and a building's demand by its method (`building_demand`).",
  "sections": {
   "building_demand": {
    "standard": "CELESC N-321.0003",
@@ -2826,9 +2827,266 @@
     "the motors of the common areas, Tabela 04 (give their demand in `common_demand`)",
     "the commercial part, Tabelas 05 to 07 (give it in `commercial`)"
    ]
+  },
+  "service": {
+   "categories": {
+    "source": "Celesc Distribuição, Norma Técnica N-321.0001 'Fornecimento de Energia Elétrica em Tensão de Distribuição Baixa Tensão', revision of December 2025 (RES. DCL nº 143/2025, 12/11/2025): Tabela 01",
+    "rows": [
+     {
+      "name": "A1",
+      "over": 0.0,
+      "up_to": 11.0,
+      "demand": null,
+      "breaker_a": 50.0,
+      "phases": 1,
+      "wires": 2,
+      "connection": [
+       10.0,
+       10.0
+      ],
+      "entry": 10.0,
+      "earth": [
+       10.0,
+       16.0
+      ]
+     },
+     {
+      "name": "A2",
+      "over": 11.0,
+      "up_to": 13.0,
+      "demand": null,
+      "breaker_a": 63.0,
+      "phases": 1,
+      "wires": 2,
+      "connection": [
+       10.0,
+       10.0
+      ],
+      "entry": 10.0,
+      "earth": [
+       10.0,
+       16.0
+      ]
+     },
+     {
+      "name": "M1",
+      "over": 0.0,
+      "up_to": 22.0,
+      "demand": null,
+      "breaker_a": 50.0,
+      "phases": 2,
+      "wires": 3,
+      "connection": [
+       10.0,
+       10.0
+      ],
+      "entry": 10.0,
+      "earth": [
+       10.0,
+       16.0
+      ]
+     },
+     {
+      "name": "M2",
+      "over": 22.0,
+      "up_to": 28.0,
+      "demand": null,
+      "breaker_a": 63.0,
+      "phases": 2,
+      "wires": 3,
+      "connection": [
+       10.0,
+       10.0
+      ],
+      "entry": 10.0,
+      "earth": [
+       10.0,
+       16.0
+      ]
+     },
+     {
+      "name": "M3",
+      "over": 28.0,
+      "up_to": 37.0,
+      "demand": null,
+      "breaker_a": 90.0,
+      "phases": 2,
+      "wires": 3,
+      "connection": [
+       16.0,
+       25.0
+      ],
+      "entry": 16.0,
+      "earth": [
+       16.0,
+       16.0
+      ]
+     },
+     {
+      "name": "M4",
+      "over": 37.0,
+      "up_to": 50.0,
+      "demand": null,
+      "breaker_a": 100.0,
+      "phases": 2,
+      "wires": 3,
+      "connection": [
+       16.0,
+       25.0
+      ],
+      "entry": 25.0,
+      "earth": [
+       16.0,
+       25.0
+      ]
+     },
+     {
+      "name": "B1",
+      "over": 13.0,
+      "up_to": 20.0,
+      "demand": null,
+      "breaker_a": 50.0,
+      "phases": 2,
+      "wires": 3,
+      "connection": [
+       10.0,
+       10.0
+      ],
+      "entry": 10.0,
+      "earth": [
+       10.0,
+       16.0
+      ]
+     },
+     {
+      "name": "B2",
+      "over": 20.0,
+      "up_to": 25.0,
+      "demand": null,
+      "breaker_a": 63.0,
+      "phases": 2,
+      "wires": 3,
+      "connection": [
+       10.0,
+       10.0
+      ],
+      "entry": 10.0,
+      "earth": [
+       10.0,
+       16.0
+      ]
+     },
+     {
+      "name": "C1",
+      "over": 25.0,
+      "up_to": 30.0,
+      "demand": [
+       0.0,
+       30.0
+      ],
+      "breaker_a": 50.0,
+      "phases": 3,
+      "wires": 4,
+      "connection": [
+       10.0,
+       10.0
+      ],
+      "entry": 10.0,
+      "earth": [
+       10.0,
+       16.0
+      ]
+     },
+     {
+      "name": "C2",
+      "over": 30.0,
+      "up_to": 42.0,
+      "demand": [
+       30.0,
+       40.0
+      ],
+      "breaker_a": 63.0,
+      "phases": 3,
+      "wires": 4,
+      "connection": [
+       10.0,
+       25.0
+      ],
+      "entry": 16.0,
+      "earth": [
+       16.0,
+       16.0
+      ]
+     },
+     {
+      "name": "C3",
+      "over": 42.0,
+      "up_to": 50.0,
+      "demand": [
+       40.0,
+       45.0
+      ],
+      "breaker_a": 80.0,
+      "phases": 3,
+      "wires": 4,
+      "connection": [
+       16.0,
+       25.0
+      ],
+      "entry": 16.0,
+      "earth": [
+       16.0,
+       16.0
+      ]
+     },
+     {
+      "name": "C4",
+      "over": 50.0,
+      "up_to": 65.0,
+      "demand": [
+       45.0,
+       60.0
+      ],
+      "breaker_a": 100.0,
+      "phases": 3,
+      "wires": 4,
+      "connection": [
+       25.0,
+       35.0
+      ],
+      "entry": 25.0,
+      "earth": [
+       16.0,
+       25.0
+      ]
+     },
+     {
+      "name": "C5",
+      "over": 65.0,
+      "up_to": 75.0,
+      "demand": [
+       60.0,
+       75.0
+      ],
+      "breaker_a": 125.0,
+      "phases": 3,
+      "wires": 4,
+      "connection": [
+       35.0,
+       50.0
+      ],
+      "entry": 50.0,
+      "earth": [
+       16.0,
+       35.0
+      ]
+     }
+    ]
+   }
   }
  },
  "sources": {
-  "building_demand": "Celesc Distribuição N-321.0003 (revision December 2023, RES. DCL 235/2023), item 5.6.2: DP = k·(F·Da + Di + Dt + Dm) + De + Ds. Equivalents abroad multiply a dwelling's demand by a factor for the number of dwellings in the same way: Spain's ITC-BT-10 (in BIMCraft's codes), Germany's DIN 18015-1, France's NF C 14-100, the US NEC 220.84 and the UK's ADMD."
+  "building_demand": "Celesc Distribuição N-321.0003 (revision December 2023, RES. DCL 235/2023), item 5.6.2: DP = k·(F·Da + Di + Dt + Dm) + De + Ds. Equivalents abroad multiply a dwelling's demand by a factor for the number of dwellings in the same way: Spain's ITC-BT-10 (in BIMCraft's codes), Germany's DIN 18015-1, France's NF C 14-100, the US NEC 220.84 and the UK's ADMD.",
+  "service": "Celesc Distribuição, Norma Técnica N-321.0001 'Fornecimento de Energia Elétrica em Tensão de Distribuição Baixa Tensão', revision of December 2025 (RES. DCL nº 143/2025, 12/11/2025): Tabela 01"
  }
 }

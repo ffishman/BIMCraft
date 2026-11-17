@@ -14,21 +14,117 @@
 //! pole), the motor starting rules of Tabela 12, and the power factors of discharge lighting in Tabela 15's buildings beyond the
 //! one given.
 
-/// The utilities there are tables for.
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::BTreeMap;
+use std::sync::OnceLock;
+
+/// The `service` section of the utilities whose methods are here: the part only each one has (`installation`, GED 13's tables,
+/// in CPFL's code; `annexes`, GRI-0017's, in Enel's; `categories`, Tabela 01 of N-321.0001, in Celesc's). The other utilities'
+/// categories are their `entrance` (`entrance.rs`).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ServiceRules {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installation: Option<Ged13>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub annexes: Option<Gri0017>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub categories: Option<Rows<CelescRow>>,
+}
+
+impl crate::codes::Section for ServiceRules {
+    const DISCIPLINE: crate::codes::Discipline = crate::codes::Discipline::Electrical;
+    const KEY: &'static str = "service";
+    fn check(&self) -> Result<(), String> {
+        numbers_fit("service", &serde_json::to_value(self).map_err(|e| e.to_string())?)
+    }
+}
+
+/// Whether every number in a utility's tables can be one: a load, a factor, a current, a section or a count is never below
+/// zero, a factor never above 10, and a power factor is over 0 and at most 1.
+pub(crate) fn numbers_fit(section: &str, v: &Value) -> Result<(), String> {
+    fn walk(section: &str, key: &str, v: &Value, depth: usize) -> Result<(), String> {
+        if depth > 64 {
+            return Err(format!("{section}: the tables are nested too deep"));
+        }
+        match v {
+            Value::Object(m) => m.iter().try_for_each(|(k, x)| walk(section, k, x, depth + 1)),
+            Value::Array(a) => {
+                // A utility's demand factors, [load, factor] by steps or bands and what lies beyond: a share, 1 at most.
+                if section == "service" && (key == "steps" || key == "bands") && a.iter().all(Value::is_array) {
+                    // and the loads they start at, in order.
+                    let firsts: Vec<Option<&Value>> = a.iter().map(|x| x.as_array().and_then(|p| p.first())).collect();
+                    // A row with no load (`null`) is the rest, so the last.
+                    if firsts.iter().rev().skip(1).any(|f| f.is_none_or(Value::is_null)) {
+                        return Err(format!("{section}: only the last row of `{key}` may have no load (the rest)"));
+                    }
+                    let at: Vec<f64> = firsts.iter().filter_map(|f| f.and_then(Value::as_f64)).collect();
+                    if at.windows(2).any(|w| w[0] >= w[1]) {
+                        return Err(format!("{section}: the loads of `{key}` grow from row to row"));
+                    }
+                    for x in a {
+                        if let Some(f) = x.as_array().filter(|p| p.len() == 2).and_then(|p| p[1].as_f64())
+                            && f > 1.0
+                        {
+                            return Err(format!("{section}: a demand factor in `{key}` is 1 at most, not {f}"));
+                        }
+                    }
+                }
+                a.iter().try_for_each(|x| walk(section, key, x, depth + 1))
+            }
+            Value::Number(n) => {
+                let x = n.as_f64().unwrap_or(f64::NAN);
+                if !x.is_finite() || !(0.0..=1e9).contains(&x) {
+                    return Err(format!("{section}: `{key}` is a number from 0 up, not {n}"));
+                }
+                if key == "power_factor" && !(x > 0.0 && x <= 1.0) {
+                    return Err(format!("{section}: `power_factor` is over 0 and at most 1, not {n}"));
+                }
+                if section == "service" && key == "beyond" && x > 1.0 {
+                    return Err(format!("{section}: a demand factor (`beyond`) is 1 at most, not {n}"));
+                }
+                if key.starts_with("breaker") && x <= 0.0 {
+                    return Err(format!("{section}: a breaker (`{key}`) is over 0 A, not {n}"));
+                }
+                if key == "factor" && x > 10.0 {
+                    return Err(format!("{section}: `factor` is 10 at most, not {n}"));
+                }
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+    walk(section, section, v, 0)
+}
+
+/// The `service` section of each of BIMCraft's electrical codes that has one, by the code's id, in the library's order; one that
+/// does not read is left out, which a test keeps from happening.
+pub fn services() -> impl Iterator<Item = (&'static str, &'static ServiceRules)> {
+    static ALL: OnceLock<Vec<(&'static str, ServiceRules)>> = OnceLock::new();
+    ALL.get_or_init(|| {
+        crate::codes::of(crate::codes::Discipline::Electrical)
+            .filter_map(|c| Some((c.code.as_str(), serde_json::from_value(c.sections.get("service")?.clone()).ok()?)))
+            .collect()
+    })
+    .iter()
+    .map(|(c, s)| (*c, s))
+}
+
+/// The `service` section of the electrical code `code`.
+pub fn service(code: &str) -> Option<&'static ServiceRules> {
+    services().find(|(c, _)| *c == code).map(|(_, s)| s)
+}
+
+/// The utilities whose methods are here (their numbers are in `data/codes/electrical/`).
 pub const UTILITIES: &[&str] = &["CPFL", "ENEL", "CELESC"];
 
-/// Where the numbers come from, for each utility.
+/// Where the numbers come from, for each utility: the source its code's data names.
 pub fn source(utility: &str) -> Option<&'static str> {
     match utility {
-        "CPFL" => Some(
-            "CPFL Energia, Norma Técnica GED 13 (DIST-13-2026-RE-NOR) 'Fornecimento em Tensão Secundária de Distribuição', version 46.0, 19/03/2026",
-        ),
-        "ENEL" => Some(
-            "Enel Grids Brasil, Especificação Técnica GRI-0017 (GRI-EDBR-CNC-GRI-0017 / CNC-NDBR-DBR-24-1569-EDBR) 'Fornecimento de Energia Elétrica em Tensão Secundária de Distribuição até 1 kV - Conexão Individual', version 02, 06/03/2025: Anexos A to E",
-        ),
-        "CELESC" => Some(
-            "Celesc Distribuição, Norma Técnica N-321.0001 'Fornecimento de Energia Elétrica em Tensão de Distribuição Baixa Tensão', revision of December 2025 (RES. DCL nº 143/2025, 12/11/2025): Tabela 01",
-        ),
+        "CPFL" => ged13().map(|t| t.source.as_str()),
+        "ENEL" => gri0017().map(|t| t.source.as_str()),
+        "CELESC" => Some(celesc_01().source.as_str()).filter(|s| !s.is_empty()),
         _ => None,
     }
 }
@@ -83,6 +179,14 @@ pub enum SpecialKind {
 pub const SPECIAL_KINDS: &[&str] = &["arc_weld", "resistance_weld", "xray"];
 
 impl SpecialKind {
+    pub fn name(self) -> &'static str {
+        match self {
+            SpecialKind::ArcWeld => "arc_weld",
+            SpecialKind::ResistanceWeld => "resistance_weld",
+            SpecialKind::Xray => "xray",
+        }
+    }
+
     pub fn parse(s: &str) -> Option<SpecialKind> {
         Some(match s {
             "arc_weld" => SpecialKind::ArcWeld,
@@ -150,223 +254,97 @@ pub struct Output {
     pub demand_kva: f64,
 }
 
-/// Tabela 2: the outlets of 100 W and the outlets of 600 W of the kitchen a dwelling has at least, by built area (m²); `None`
-/// above 250 m², where they are declared.
-pub fn least_outlets(area: f64) -> Option<(u32, u32)> {
-    const ROWS: &[(f64, u32, u32)] = &[
-        (8.0, 1, 1),
-        (15.0, 3, 1),
-        (20.0, 4, 2),
-        (30.0, 5, 2),
-        (50.0, 6, 3),
-        (70.0, 7, 3),
-        (90.0, 8, 3),
-        (110.0, 9, 3),
-        (140.0, 10, 3),
-        (170.0, 11, 3),
-        (200.0, 12, 3),
-        (220.0, 13, 3),
-        (250.0, 14, 3),
-    ];
-    ROWS.iter().find(|r| area <= r.0).map(|r| (r.1, r.2))
+/// A factor by a count or a load: the first step whose bound reaches it, `beyond` past the last.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Steps {
+    pub source: String,
+    /// [up to, factor], in order.
+    pub steps: Vec<(f64, f64)>,
+    pub beyond: f64,
 }
 
-/// Tabela 3: the demand factor of a residence's lighting and outlets by its installed load (kW).
-pub fn lighting_factor(kw: f64) -> f64 {
-    const ROWS: &[(f64, f64)] = &[
-        (1.0, 0.86),
-        (2.0, 0.75),
-        (3.0, 0.66),
-        (4.0, 0.59),
-        (5.0, 0.52),
-        (6.0, 0.45),
-        (7.0, 0.40),
-        (8.0, 0.35),
-        (9.0, 0.31),
-        (10.0, 0.27),
-    ];
-    ROWS.iter().find(|r| kw <= r.0).map_or(0.24, |r| r.1)
-}
-
-/// Tabela 4: showers, taps, instant heaters and irons, by how many there are in all.
-pub fn heater_factor(n: u32) -> f64 {
-    const F: [f64; 25] = [
-        1.00, 1.00, 0.84, 0.76, 0.70, 0.65, 0.60, 0.57, 0.54, 0.52, 0.49, 0.48, 0.46, 0.45, 0.44, 0.43, 0.42, 0.41, 0.40, 0.40, 0.39, 0.39,
-        0.39, 0.38, 0.38,
-    ];
-    F.get((n.max(1) - 1) as usize).copied().unwrap_or(0.38)
-}
-
-/// Tabela 5: central or storage heaters (boilers).
-pub fn boiler_factor(n: u32) -> f64 {
-    match n {
-        0 | 1 => 1.0,
-        2 => 0.72,
-        _ => 0.62,
+impl Steps {
+    pub fn at(&self, x: f64) -> f64 {
+        self.steps.iter().find(|s| x <= s.0).map_or(self.beyond, |s| s.1)
     }
 }
 
-/// Tabela 6: dryers, ovens, dishwashers and microwave ovens.
-pub fn appliance_factor(n: u32) -> f64 {
-    match n {
-        0 | 1 => 1.0,
-        2..=4 => 0.70,
-        5..=6 => 0.60,
-        _ => 0.50,
-    }
+/// What item 6.22.1 a) counts a dwelling's points at.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DwellingPoints {
+    pub source: String,
+    pub outlet_w: f64,
+    pub kitchen_outlet_w: f64,
+    pub lighting_point_w: f64,
+    /// The kitchen's outlets where Tabela 2 gives none (no area, or above it).
+    pub kitchen_outlets: u32,
 }
 
-/// Tabela 7: electric stoves.
-pub fn stove_factor(n: u32) -> f64 {
-    match n {
-        0 | 1 => 1.00,
-        2 => 0.60,
-        3 => 0.48,
-        4 => 0.40,
-        5 => 0.37,
-        6 => 0.35,
-        7 => 0.33,
-        8 => 0.32,
-        9 => 0.31,
-        10..=11 => 0.30,
-        12..=15 => 0.28,
-        _ => 0.26,
-    }
+/// A table of rows of numbers, as printed.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Rows<R> {
+    pub source: String,
+    pub rows: Vec<R>,
 }
 
-/// Tabela 9: commercial window air conditioners, by how many.
-pub fn air_factor(n: u32) -> f64 {
-    match n {
-        0..=10 => 1.00,
-        11..=20 => 0.90,
-        21..=30 => 0.82,
-        31..=40 => 0.80,
-        41..=50 => 0.77,
-        _ => 0.75,
-    }
+/// One kind of special equipment's factors by rank.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RankFactors {
+    pub steps: Vec<(f64, f64)>,
+    pub beyond: f64,
 }
 
-/// Tabela 10: motors (and hydromassage), by the rank of the motor from the biggest: the 1st at 1, the 2nd at 0.9, the 3rd to 5th
-/// at 0.8, the others at 0.7.
-pub fn motor_factor(rank: u32) -> f64 {
-    match rank {
-        0 | 1 => 1.0,
-        2 => 0.9,
-        3..=5 => 0.8,
-        _ => 0.7,
-    }
+/// Tabela 11: special equipment.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpecialTable {
+    pub source: String,
+    pub power_factor: f64,
+    pub kinds: BTreeMap<String, RankFactors>,
 }
 
-/// Tabela 8: a window air conditioner by its BTU/h, the VA and the W of one (the figures are the same at 110 and 220 V).
-pub fn window_air(btu: f64) -> Option<(f64, f64)> {
-    const ROWS: &[(f64, f64, f64)] = &[
-        (7100.0, 1100.0, 900.0),
-        (8500.0, 1550.0, 1300.0),
-        (10000.0, 1650.0, 1400.0),
-        (12000.0, 1900.0, 1600.0),
-        (14000.0, 2100.0, 1900.0),
-        (18000.0, 2860.0, 2600.0),
-        (21000.0, 3080.0, 2800.0),
-        (30000.0, 4000.0, 3600.0),
-    ];
-    ROWS.iter().find(|r| r.0 == btu).map(|r| (r.1, r.2))
+/// Tabelas 13 and 14: [cv, kW, kVA].
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MotorTables {
+    pub source: String,
+    pub single_phase: Vec<(f64, f64, f64)>,
+    pub three_phase: Vec<(f64, f64, f64)>,
 }
 
-/// Tabelas 13 (single-phase) and 14 (three-phase): a motor by its cv, its kVA and its kW. Single-phase stops at 15 cv, three-phase
-/// at 300 cv (above 50 cv the supply is at medium voltage, Tabela 14's note 3).
-pub fn motor(cv: f64, phases: u32) -> Option<(f64, f64)> {
-    // (cv, kW, kVA)
-    const ONE: &[(f64, f64, f64)] = &[
-        (0.25, 0.42, 0.66),
-        (1.0 / 3.0, 0.51, 0.77),
-        (0.5, 0.79, 1.18),
-        (0.75, 0.90, 1.34),
-        (1.0, 1.14, 1.56),
-        (1.5, 1.67, 2.35),
-        (2.0, 2.17, 2.97),
-        (3.0, 3.22, 4.07),
-        (5.0, 5.11, 6.16),
-        (7.5, 7.07, 8.84),
-        (10.0, 9.31, 11.64),
-        (12.5, 11.58, 14.94),
-        (15.0, 13.72, 16.94),
-    ];
-    const THREE: &[(f64, f64, f64)] = &[
-        (0.25, 0.35, 0.58),
-        (1.0 / 3.0, 0.39, 0.65),
-        (0.5, 0.58, 0.87),
-        (0.75, 0.83, 1.26),
-        (1.0, 1.05, 1.52),
-        (1.5, 1.54, 2.17),
-        (2.0, 1.95, 2.70),
-        (3.0, 2.95, 4.04),
-        (4.0, 3.72, 5.03),
-        (5.0, 4.51, 6.02),
-        (6.0, 5.33, 7.00),
-        (7.5, 6.57, 8.65),
-        (10.0, 8.89, 11.54),
-        (12.5, 10.85, 14.09),
-        (15.0, 12.82, 16.65),
-        (20.0, 17.01, 22.10),
-        (25.0, 20.92, 25.83),
-        (30.0, 25.03, 30.52),
-        (40.0, 33.38, 39.74),
-        (50.0, 40.93, 48.73),
-        (60.0, 49.42, 58.15),
-        (75.0, 61.44, 72.28),
-        (100.0, 80.55, 97.05),
-        (125.0, 96.23, 114.56),
-        (150.0, 106.25, 128.02),
-        (175.0, 140.13, 170.89),
-        (200.0, 159.08, 196.39),
-        (250.0, 196.69, 242.82),
-        (300.0, 232.44, 286.97),
-    ];
-    let rows = if phases == 1 { ONE } else { THREE };
-    rows.iter().find(|r| (r.0 - cv).abs() < 1e-6).map(|r| (r.2, r.1))
+/// A use of Tabela 15: the demand factor by bands of the declared load ([up to kW, factor], the last open with `null`), and
+/// whether its showers and taps go by Tabela 4 (item 6.22.1 b).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Use {
+    #[serde(rename = "use")]
+    pub use_: String,
+    pub bands: Vec<(Option<f64>, f64)>,
+    pub heaters_by_table: bool,
 }
 
-/// Tabela 15: a building's lighting and outlets, the least W/m² and the demand (kW) of a declared load of `kw`; `None` for a use
-/// the table does not have.
-pub fn commercial_demand(kind: &str, kw: f64) -> Option<f64> {
-    // Tiers: (up to kW, factor), the last factor for what is over.
-    let tiers: &[(f64, f64)] = match kind {
-        "school" => &[(12.0, 1.0), (f64::INFINITY, 0.5)],
-        "office" => &[(20.0, 1.0), (f64::INFINITY, 0.7)],
-        "hospital" => &[(50.0, 0.4), (f64::INFINITY, 0.2)],
-        "hotel" => &[(20.0, 0.5), (f64::INFINITY, 0.4)],
-        k if USES.contains(&k) => &[(f64::INFINITY, 1.0)],
-        _ => return None,
-    };
-    let (mut left, mut from, mut total) = (kw.max(0.0), 0.0, 0.0);
-    for (to, f) in tiers {
-        let part = left.min(to - from);
-        total += part * f;
-        left -= part;
-        from = *to;
-        if left <= 0.0 {
-            break;
-        }
-    }
-    Some(total)
-}
-
-/// The uses of Tabela 15, as a command gives them.
-pub const USES: &[&str] =
-    &["auditorium", "shop", "barbershop", "club", "school", "office", "garage", "hospital", "hotel", "church", "industry", "restaurant"];
-
-/// Whether Tabela 4 (not a factor of 1) applies to the showers and taps of a building of this use: hotels, motels, hospitals,
-/// commercial houses and churches, as item 6.22.1 b) names.
-fn heaters_by_table(kind: &str) -> bool {
-    matches!(kind, "hotel" | "hospital" | "shop" | "church")
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UseTable {
+    pub source: String,
+    pub uses: Vec<Use>,
 }
 
 /// One category of Tabela 1A, 1B or 1C.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Category {
-    pub name: &'static str,
+    pub name: String,
+    /// The installed load (kW) and, for a three-phase row, the demand (kVA) it goes up to: the first row that holds both is taken.
+    pub installed_up_to: f64,
+    pub demand_up_to: Option<f64>,
     /// The breaker (A), the copper PVC cable and its aluminium alternative (mm²), the conduit (mm) and the earthing conductor
     /// (mm²).
+    #[serde(rename = "breaker_a")]
     pub breaker: f64,
     pub cable: f64,
     pub aluminium: f64,
@@ -376,43 +354,164 @@ pub struct Category {
     pub phases: u8,
 }
 
-/// The category of service for an installed load `c` (kW) and a demand `d` (kVA), `None` above the table.
-pub fn category(system: System, c: f64, d: f64) -> Option<Category> {
-    let k = |name, breaker, cable, aluminium, conduit, earth, phases| {
-        Some(Category { name, breaker, cable, aluminium, conduit, earth, phases })
-    };
-    match system {
-        System::S127_220 => match c {
-            c if c <= 6.0 => k("A1", 32.0, 6.0, 10.0, 32.0, 6.0, 1),
-            c if c <= 12.0 => k("A2", 63.0, 16.0, 16.0, 32.0, 10.0, 1),
-            c if c <= 18.0 => k("B1", 63.0, 16.0, 16.0, 32.0, 10.0, 2),
-            c if c <= 25.0 => k("B2", 80.0, 25.0, 25.0, 40.0, 10.0, 2),
-            c if c <= 75.0 => match d {
-                d if d <= 23.0 => k("C1", 63.0, 16.0, 25.0, 40.0, 10.0, 3),
-                d if d <= 30.0 => k("C2", 80.0, 25.0, 25.0, 40.0, 10.0, 3),
-                d if d <= 38.0 => k("C3", 100.0, 35.0, 35.0, 40.0, 10.0, 3),
-                d if d <= 47.0 => k("C4", 125.0, 50.0, 50.0, 50.0, 16.0, 3),
-                d if d <= 57.0 => k("C5", 150.0, 70.0, 70.0, 60.0, 25.0, 3),
-                d if d <= 76.0 => k("C6", 200.0, 95.0, 95.0, 60.0, 35.0, 3),
-                _ => None,
-            },
-            _ => None,
-        },
-        System::S220_380 => match c {
-            c if c <= 10.0 => k("A3", 32.0, 6.0, 10.0, 32.0, 6.0, 1),
-            c if c <= 15.0 => k("A4", 63.0, 16.0, 16.0, 32.0, 10.0, 1),
-            c if c <= 25.0 => k("B3", 63.0, 16.0, 16.0, 32.0, 10.0, 2),
-            c if c <= 75.0 => match d {
-                d if d <= 26.0 => k("C7", 40.0, 10.0, 16.0, 40.0, 6.0, 3),
-                d if d <= 40.0 => k("C8", 63.0, 16.0, 16.0, 40.0, 10.0, 3),
-                d if d <= 52.0 => k("C9", 80.0, 25.0, 25.0, 40.0, 10.0, 3),
-                d if d <= 66.0 => k("C10", 100.0, 35.0, 35.0, 40.0, 10.0, 3),
-                d if d <= 82.0 => k("C11", 125.0, 50.0, 50.0, 50.0, 16.0, 3),
-                _ => None,
-            },
-            _ => None,
-        },
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Categories {
+    pub source: String,
+    /// By supply system (`127/220`, `220/380`), the rows in order.
+    pub systems: BTreeMap<String, Vec<Category>>,
+}
+
+/// CPFL's GED 13, as `data/codes/electrical/cpfl.json` holds it (the `installation` of its `service` section).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Ged13 {
+    pub source: String,
+    pub dwelling: DwellingPoints,
+    pub least_outlets: Rows<(f64, u32, u32)>,
+    pub lighting: Steps,
+    pub heaters: Steps,
+    pub boilers: Steps,
+    pub appliances: Steps,
+    pub stoves: Steps,
+    pub window_air: Rows<(f64, f64, f64)>,
+    pub commercial_air: Steps,
+    pub motor_rank: Steps,
+    pub special: SpecialTable,
+    pub motors: MotorTables,
+    pub commercial: UseTable,
+    pub categories: Categories,
+}
+
+/// GED 13's tables; `None` if they do not read, which a test keeps from happening.
+pub fn ged13() -> Option<&'static Ged13> {
+    static T: OnceLock<Option<Ged13>> = OnceLock::new();
+    T.get_or_init(|| service("cpfl").and_then(|s| s.installation.clone())).as_ref()
+}
+
+impl Ged13 {
+    /// Tabela 2: the outlets of 100 W and the outlets of 600 W of the kitchen a dwelling has at least, by built area (m²); `None`
+    /// above 250 m², where they are declared.
+    pub fn least_outlets(&self, area: f64) -> Option<(u32, u32)> {
+        self.least_outlets.rows.iter().find(|r| area <= r.0).map(|r| (r.1, r.2))
     }
+
+    /// Tabela 8: a window air conditioner by its BTU/h, the VA and the W of one (the figures are the same at 110 and 220 V).
+    pub fn window_air(&self, btu: f64) -> Option<(f64, f64)> {
+        self.window_air.rows.iter().find(|r| r.0 == btu).map(|r| (r.1, r.2))
+    }
+
+    /// Tabelas 13 (single-phase) and 14 (three-phase): a motor by its cv, its kVA and its kW.
+    pub fn motor(&self, cv: f64, phases: u32) -> Option<(f64, f64)> {
+        let rows = if phases == 1 { &self.motors.single_phase } else { &self.motors.three_phase };
+        rows.iter().find(|r| (r.0 - cv).abs() < 1e-6).map(|r| (r.2, r.1))
+    }
+
+    fn use_of(&self, kind: &str) -> Option<&Use> {
+        self.commercial.uses.iter().find(|u| u.use_ == kind)
+    }
+
+    /// Tabela 15: the demand (kW) of a building's declared lighting and outlets load of `kw`, by its use; `None` for a use the
+    /// table does not have.
+    pub fn commercial_demand(&self, kind: &str, kw: f64) -> Option<f64> {
+        let (mut left, mut from, mut total) = (kw.max(0.0), 0.0, 0.0);
+        for (to, f) in &self.use_of(kind)?.bands {
+            let to = to.unwrap_or(f64::INFINITY);
+            let part = left.min(to - from);
+            total += part * f;
+            left -= part;
+            from = to;
+            if left <= 0.0 {
+                break;
+            }
+        }
+        Some(total)
+    }
+
+    /// The uses of Tabela 15, as a command gives them.
+    pub fn uses(&self) -> Vec<&str> {
+        self.commercial.uses.iter().map(|u| u.use_.as_str()).collect()
+    }
+
+    /// Whether Tabela 4 (not a factor of 1) applies to the showers and taps of a building of this use (item 6.22.1 b).
+    fn heaters_by_table(&self, kind: &str) -> bool {
+        self.use_of(kind).is_some_and(|u| u.heaters_by_table)
+    }
+
+    /// The category of service for an installed load `c` (kW) and a demand `d` (kVA), `None` above the table: the first row
+    /// whose installed load, and demand where it prints one, hold them.
+    pub fn category(&self, system: System, c: f64, d: f64) -> Option<&Category> {
+        let key = match system {
+            System::S127_220 => "127/220",
+            System::S220_380 => "220/380",
+        };
+        self.categories.systems.get(key)?.iter().find(|r| c <= r.installed_up_to && r.demand_up_to.is_none_or(|u| d <= u))
+    }
+}
+
+// What the library's GED 13 gives, for the tests that read its tables as printed.
+
+pub fn least_outlets(area: f64) -> Option<(u32, u32)> {
+    ged13()?.least_outlets(area)
+}
+
+fn steps(f: impl Fn(&Ged13) -> &Steps, x: f64) -> Option<f64> {
+    ged13().map(|t| f(t).at(x))
+}
+
+/// Tabela 3: the demand factor of a residence's lighting and outlets by its installed load (kW).
+pub fn lighting_factor(kw: f64) -> Option<f64> {
+    steps(|t| &t.lighting, kw)
+}
+
+/// Tabela 4: showers, taps, instant heaters and irons, by how many there are in all.
+pub fn heater_factor(n: u32) -> Option<f64> {
+    steps(|t| &t.heaters, f64::from(n))
+}
+
+/// Tabela 5: central or storage heaters (boilers).
+pub fn boiler_factor(n: u32) -> Option<f64> {
+    steps(|t| &t.boilers, f64::from(n))
+}
+
+/// Tabela 6: dryers, ovens, dishwashers and microwave ovens.
+pub fn appliance_factor(n: u32) -> Option<f64> {
+    steps(|t| &t.appliances, f64::from(n))
+}
+
+/// Tabela 7: electric stoves.
+pub fn stove_factor(n: u32) -> Option<f64> {
+    steps(|t| &t.stoves, f64::from(n))
+}
+
+/// Tabela 9: commercial window air conditioners, by how many.
+pub fn air_factor(n: u32) -> Option<f64> {
+    steps(|t| &t.commercial_air, f64::from(n))
+}
+
+/// Tabela 10: motors (and hydromassage), by the rank of the motor from the biggest.
+pub fn motor_factor(rank: u32) -> Option<f64> {
+    steps(|t| &t.motor_rank, f64::from(rank))
+}
+
+pub fn window_air(btu: f64) -> Option<(f64, f64)> {
+    ged13()?.window_air(btu)
+}
+
+pub fn motor(cv: f64, phases: u32) -> Option<(f64, f64)> {
+    ged13()?.motor(cv, phases)
+}
+
+pub fn commercial_demand(kind: &str, kw: f64) -> Option<f64> {
+    ged13()?.commercial_demand(kind, kw)
+}
+
+pub fn uses() -> Vec<&'static str> {
+    ged13().map(Ged13::uses).unwrap_or_default()
+}
+
+pub fn category(system: System, c: f64, d: f64) -> Option<&'static Category> {
+    ged13()?.category(system, c, d)
 }
 
 /// The kind of network a supply is made from, for the utility's annexes.
@@ -463,13 +562,17 @@ impl Network {
 }
 
 /// One row of Enel's Anexo A, C, D or E (GRI-0017): a category of supply for a range of installed load.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct EnelRow {
-    pub name: &'static str,
+    pub name: String,
     /// The installed load (kW) it covers: over `lo`, up to `hi`.
+    #[serde(rename = "over")]
     pub lo: f64,
+    #[serde(rename = "up_to")]
     pub hi: f64,
     /// The general breaker, A.
+    #[serde(rename = "breaker_a")]
     pub breaker: f64,
     /// The connection branch: the number of conductors a phase has (`None` where the annex prints none), the phase's section and the
     /// neutral's, mm².
@@ -478,124 +581,58 @@ pub struct EnelRow {
     pub entry: (f64, f64),
     /// The earthing conductor, copper, mm².
     pub earth: f64,
-    pub measurement: &'static str,
+    pub measurement: String,
     /// The junction box (caixa de passagem) of Anexo E.
-    pub junction_box: Option<&'static str>,
+    #[serde(default)]
+    pub junction_box: Option<String>,
 }
 
-#[allow(clippy::too_many_arguments)]
-const fn row(
-    name: &'static str,
-    lo: f64,
-    hi: f64,
-    breaker: f64,
-    connection: (Option<u8>, f64, f64),
-    entry: (f64, f64),
-    earth: f64,
-    measurement: &'static str,
-) -> EnelRow {
-    EnelRow { name, lo, hi, breaker, connection, entry, earth, measurement, junction_box: None }
+/// An annex: its letter, where it is, and its rows in the printed order (a range starts where the one before ends).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Annex<R> {
+    pub annex: String,
+    pub source: String,
+    pub rows: Vec<R>,
 }
 
-/// Anexo A: aerial network, 127/220 V (Enel Rio). Version 02 prints a range as `5,1 < C ≤ 8`; here a range starts where the one
-/// before ends.
-const ENEL_A: &[EnelRow] = &[
-    row("A1", 0.0, 5.0, 40.0, (Some(1), 10.0, 10.0), (10.0, 10.0), 10.0, "direct"),
-    row("A2", 5.0, 8.0, 63.0, (Some(1), 16.0, 10.0), (16.0, 10.0), 16.0, "direct"),
-    row("B1", 0.0, 11.0, 50.0, (Some(2), 10.0, 10.0), (10.0, 10.0), 10.0, "direct"),
-    row("B2", 11.0, 14.0, 63.0, (Some(2), 16.0, 10.0), (16.0, 10.0), 16.0, "direct"),
-    row("C1", 10.0, 15.0, 40.0, (Some(3), 10.0, 10.0), (10.0, 10.0), 10.0, "direct"),
-    row("C2", 15.0, 19.1, 50.0, (Some(3), 10.0, 10.0), (10.0, 10.0), 10.0, "direct"),
-    row("C3", 19.1, 24.0, 63.0, (Some(3), 16.0, 16.0), (25.0, 25.0), 16.0, "direct"),
-    row("C4", 24.0, 30.0, 80.0, (Some(3), 35.0, 54.6), (25.0, 25.0), 16.0, "direct"),
-    row("C5", 30.0, 38.0, 100.0, (Some(3), 35.0, 54.6), (35.0, 25.0), 16.0, "direct"),
-    row("C6", 38.0, 48.0, 125.0, (Some(3), 35.0, 54.6), (50.0, 25.0), 25.0, "direct or indirect"),
-    row("C7", 48.0, 57.1, 150.0, (Some(3), 50.0, 54.6), (70.0, 35.0), 35.0, "direct or indirect"),
-    row("C8", 57.1, 67.0, 175.0, (Some(3), 50.0, 54.6), (95.0, 50.0), 50.0, "direct or indirect"),
-    row("C9", 67.0, 75.0, 200.0, (Some(3), 95.0, 54.6), (95.0, 50.0), 50.0, "direct or indirect"),
-];
-
-/// Anexo D: underground network, surface standard, 127/220 V (Enel Rio and São Paulo).
-const ENEL_D: &[EnelRow] = &[
-    row("A1", 0.0, 8.0, 63.0, (None, 16.0, 16.0), (16.0, 16.0), 16.0, "direct"),
-    row("A2", 8.0, 10.0, 80.0, (None, 25.0, 16.0), (25.0, 16.0), 16.0, "direct"),
-    row("B1", 10.0, 14.0, 63.0, (None, 16.0, 16.0), (16.0, 16.0), 16.0, "direct"),
-    row("B2", 14.0, 18.0, 80.0, (None, 25.0, 25.0), (25.0, 25.0), 16.0, "direct"),
-    row("C1", 18.0, 24.0, 63.0, (None, 16.0, 16.0), (16.0, 16.0), 16.0, "direct"),
-    row("C2", 24.0, 30.0, 80.0, (None, 25.0, 16.0), (25.0, 16.0), 16.0, "direct"),
-    row("C3", 30.0, 48.0, 125.0, (None, 50.0, 25.0), (50.0, 25.0), 25.0, "indirect"),
-    row("C4", 48.0, 57.1, 150.0, (None, 95.0, 25.0), (50.0, 25.0), 50.0, "indirect"),
-    row("C5", 57.1, 67.0, 175.0, (None, 95.0, 25.0), (95.0, 25.0), 95.0, "direct (a 200 A meter) or indirect"),
-    row("C6", 67.0, 75.0, 200.0, (None, 150.0, 95.0), (150.0, 95.0), 95.0, "direct (a 200 A meter) or indirect"),
-];
-
-/// Anexo C: aerial network, 120/240 V (Enel Rio).
-const ENEL_C: &[EnelRow] = &[
-    row("A1", 0.0, 5.0, 40.0, (Some(1), 10.0, 10.0), (10.0, 10.0), 10.0, "direct"),
-    row("A2", 5.0, 6.0, 50.0, (Some(1), 16.0, 16.0), (16.0, 16.0), 16.0, "direct"),
-    row("B1", 6.0, 12.0, 50.0, (Some(2), 16.0, 16.0), (16.0, 16.0), 16.0, "direct"),
-];
-
-/// A row of Anexo E, with its junction box.
-#[allow(clippy::too_many_arguments)]
-const fn row_e(
-    name: &'static str,
-    lo: f64,
-    hi: f64,
-    breaker: f64,
-    boxed: &'static str,
-    conn: f64,
-    entry: f64,
-    earth: f64,
-    m: &'static str,
-) -> EnelRow {
-    EnelRow {
-        name,
-        lo,
-        hi,
-        breaker,
-        connection: (None, conn, conn),
-        entry: (entry, entry),
-        earth,
-        measurement: m,
-        junction_box: Some(boxed),
-    }
+/// One row of Enel's Anexo B (aerial, 120/240 V, delta with a neutral): a supply by the breaker, which the designer's demand current
+/// must not exceed. Types A, B and C are one, two and three phases; a row can serve two types.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DeltaRow {
+    pub names: Vec<String>,
+    #[serde(rename = "breaker_a")]
+    pub breaker: f64,
+    pub connection: (Option<u8>, f64, f64),
+    /// The entry branch's phase conductor, mm².
+    pub entry: f64,
+    pub earth: f64,
+    pub measurement: String,
 }
 
-/// Anexo E: underground network, submersible (Enel São Paulo).
-const ENEL_E: &[EnelRow] = &[
-    row_e("B1", 10.0, 12.0, 63.0, "type 2", 16.0, 16.0, 16.0, "direct"),
-    row_e("B2", 13.0, 16.0, 80.0, "type 2", 25.0, 25.0, 16.0, "direct"),
-    row_e("B3", 16.0, 20.0, 100.0, "type 2", 35.0, 35.0, 16.0, "direct"),
-    row_e("C1", 18.0, 20.0, 63.0, "type 2", 16.0, 16.0, 16.0, "direct"),
-    row_e("C2", 20.0, 28.0, 80.0, "type 2", 25.0, 25.0, 16.0, "direct"),
-    row_e("C3", 29.0, 36.0, 100.0, "type 2", 35.0, 35.0, 16.0, "direct"),
-    row_e("C4", 37.0, 45.0, 125.0, "type 3", 50.0, 50.0, 25.0, "indirect"),
-    row_e("C5", 46.0, 54.0, 160.0, "type 3", 95.0, 70.0, 35.0, "indirect"),
-    row_e("C6", 54.0, 65.0, 200.0, "type 3", 150.0, 95.0, 50.0, "indirect"),
-    row_e("C7", 66.0, 80.0, 225.0, "type 3", 150.0, 120.0, 70.0, "indirect"),
-    row_e("C8", 81.0, 90.0, 275.0, "type 3", 150.0, 150.0, 95.0, "indirect"),
-    row_e("C9", 91.0, 100.0, 300.0, "type 3", 185.0, 185.0, 95.0, "indirect"),
-];
-
-fn enel_rows(n: Network) -> &'static [EnelRow] {
-    match n {
-        Network::Aerial => ENEL_A,
-        Network::Aerial120240 => ENEL_C,
-        Network::Underground => ENEL_D,
-        Network::Submersible => ENEL_E,
-    }
+/// Enel's GRI-0017, as `data/codes/electrical/enel.json` holds it (the `annexes` of its `service` section).
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Gri0017 {
+    pub source: String,
+    pub aerial: Annex<EnelRow>,
+    pub aerial_120_240: Annex<EnelRow>,
+    pub underground: Annex<EnelRow>,
+    pub underground_submersible: Annex<EnelRow>,
+    pub aerial_delta: Annex<DeltaRow>,
 }
 
-/// A row of Enel's annex by its name.
-pub fn enel_row(n: Network, name: &str) -> Option<&'static EnelRow> {
-    enel_rows(n).iter().find(|r| r.name == name)
+/// GRI-0017's annexes; `None` if they do not read, which a test keeps from happening.
+pub fn gri0017() -> Option<&'static Gri0017> {
+    static T: OnceLock<Option<Gri0017>> = OnceLock::new();
+    T.get_or_init(|| service("enel").and_then(|s| s.annexes.clone())).as_ref()
 }
 
 /// The rows that fit an installed load.
-pub struct Pick {
+pub struct Pick<'a> {
     /// The first is the smaller supply.
-    pub rows: Vec<&'static EnelRow>,
+    pub rows: Vec<&'a EnelRow>,
 }
 
 fn phases_of(r: &EnelRow) -> u8 {
@@ -606,151 +643,156 @@ fn phases_of(r: &EnelRow) -> u8 {
     }
 }
 
-/// The rows of an annex whose range holds `kw` (over `lo`, up to `hi`), those of `phases` phases if given; where none holds it (the
-/// annex prints whole kilowatts, so there is a gap between two ranges) the first that is higher. `None` above the table.
-pub fn enel_pick(n: Network, kw: f64, phases: Option<u8>) -> Option<Pick> {
-    let rows: Vec<&'static EnelRow> = enel_rows(n).iter().filter(|r| phases.is_none_or(|p| phases_of(r) == p)).collect();
-    let holding: Vec<&'static EnelRow> = rows.iter().copied().filter(|r| kw > r.lo && kw <= r.hi || (r.lo == 0.0 && kw <= r.hi)).collect();
-    if !holding.is_empty() {
-        return Some(Pick { rows: holding });
+impl Gri0017 {
+    fn rows(&self, n: Network) -> &[EnelRow] {
+        match n {
+            Network::Aerial => &self.aerial.rows,
+            Network::Aerial120240 => &self.aerial_120_240.rows,
+            Network::Underground => &self.underground.rows,
+            Network::Submersible => &self.underground_submersible.rows,
+        }
     }
-    rows.iter().copied().find(|r| r.hi >= kw).map(|r| Pick { rows: vec![r] })
-}
 
-/// One row of Enel's Anexo B (aerial, 120/240 V, delta with a neutral): a supply by the breaker, which the designer's demand current
-/// must not exceed. Types A, B and C are one, two and three phases; a row can serve two types.
-#[derive(Clone, Copy, Debug)]
-pub struct DeltaRow {
-    pub names: &'static [&'static str],
-    pub breaker: f64,
-    pub connection: (Option<u8>, f64, f64),
-    /// The entry branch's phase conductor, mm².
-    pub entry: f64,
-    pub earth: f64,
-    pub measurement: &'static str,
-}
+    /// A row of an annex by its name.
+    pub fn row(&self, n: Network, name: &str) -> Option<&EnelRow> {
+        self.rows(n).iter().find(|r| r.name == name)
+    }
 
-const fn delta(names: &'static [&'static str], breaker: f64, conn: (u8, f64, f64), entry: f64, earth: f64, m: &'static str) -> DeltaRow {
-    DeltaRow { names, breaker, connection: (Some(conn.0), conn.1, conn.2), entry, earth, measurement: m }
-}
+    /// The rows of an annex whose range holds `kw` (over `lo`, up to `hi`), those of `phases` phases if given; where none holds
+    /// it (the annex prints whole kilowatts, so there is a gap between two ranges) the first that is higher. `None` above the
+    /// table.
+    pub fn pick(&self, n: Network, kw: f64, phases: Option<u8>) -> Option<Pick<'_>> {
+        let rows: Vec<&EnelRow> = self.rows(n).iter().filter(|r| phases.is_none_or(|p| phases_of(r) == p)).collect();
+        let holding: Vec<&EnelRow> = rows.iter().copied().filter(|r| kw > r.lo && kw <= r.hi || (r.lo == 0.0 && kw <= r.hi)).collect();
+        if !holding.is_empty() {
+            return Some(Pick { rows: holding });
+        }
+        rows.iter().copied().find(|r| r.hi >= kw).map(|r| Pick { rows: vec![r] })
+    }
 
-/// Anexo B (Enel São Paulo).
-const ENEL_B: &[DeltaRow] = &[
-    delta(&["A1"], 50.0, (1, 10.0, 10.0), 10.0, 10.0, "direct"),
-    delta(&["B3"], 50.0, (2, 10.0, 10.0), 10.0, 10.0, "direct"),
-    delta(&["C3"], 50.0, (3, 10.0, 10.0), 10.0, 10.0, "direct"),
-    delta(&["A2"], 63.0, (1, 16.0, 10.0), 16.0, 16.0, "direct"),
-    delta(&["B4"], 63.0, (2, 16.0, 16.0), 16.0, 16.0, "direct"),
-    delta(&["C4"], 63.0, (3, 16.0, 16.0), 16.0, 16.0, "direct"),
-    delta(&["B5"], 80.0, (2, 25.0, 25.0), 25.0, 16.0, "direct"),
-    delta(&["C5"], 80.0, (3, 25.0, 25.0), 25.0, 16.0, "direct"),
-    delta(&["B6", "C6"], 100.0, (3, 35.0, 54.6), 35.0, 16.0, "direct"),
-    delta(&["B7", "C7"], 125.0, (3, 35.0, 54.6), 50.0, 25.0, "indirect"),
-    delta(&["B8", "C8"], 160.0, (3, 50.0, 54.6), 70.0, 35.0, "indirect"),
-    delta(&["B9", "C9"], 200.0, (3, 95.0, 54.6), 95.0, 50.0, "indirect"),
-    delta(&["B10", "C10"], 225.0, (3, 95.0, 54.6), 120.0, 70.0, "indirect"),
-    delta(&["B11", "C11"], 275.0, (3, 150.0, 80.0), 150.0, 95.0, "indirect"),
-    delta(&["B12", "C12"], 300.0, (3, 150.0, 80.0), 185.0, 95.0, "indirect"),
-];
-
-/// The rows of Anexo B with the smallest breaker that holds `amps` (those of `phases` phases if given), the smaller supply first;
-/// `None` above the table.
-pub fn delta_pick(amps: f64, phases: Option<u8>) -> Option<Vec<&'static DeltaRow>> {
-    let serves = |r: &DeltaRow| {
-        phases.is_none_or(|p| {
-            r.names.iter().any(|n| match n.as_bytes().first() {
-                Some(b'A') => p == 1,
-                Some(b'B') => p == 2,
-                _ => p == 3,
+    /// The rows of Anexo B with the smallest breaker that holds `amps` (those of `phases` phases if given), the smaller supply
+    /// first; `None` above the table.
+    pub fn delta_pick(&self, amps: f64, phases: Option<u8>) -> Option<Vec<&DeltaRow>> {
+        let all = &self.aerial_delta.rows;
+        let serves = |r: &DeltaRow| {
+            phases.is_none_or(|p| {
+                r.names.iter().any(|n| match n.as_bytes().first() {
+                    Some(b'A') => p == 1,
+                    Some(b'B') => p == 2,
+                    _ => p == 3,
+                })
             })
-        })
-    };
-    let breaker = ENEL_B.iter().filter(|r| serves(r) && r.breaker >= amps).map(|r| r.breaker).fold(f64::INFINITY, f64::min);
-    let rows: Vec<&DeltaRow> = ENEL_B.iter().filter(|r| serves(r) && r.breaker == breaker).collect();
-    (!rows.is_empty()).then_some(rows)
+        };
+        let breaker = all.iter().filter(|r| serves(r) && r.breaker >= amps).map(|r| r.breaker).fold(f64::INFINITY, f64::min);
+        let rows: Vec<&DeltaRow> = all.iter().filter(|r| serves(r) && r.breaker == breaker).collect();
+        (!rows.is_empty()).then_some(rows)
+    }
+}
+
+// What the library's GRI-0017 gives, for the tests that read its annexes as printed.
+
+pub fn enel_row(n: Network, name: &str) -> Option<&'static EnelRow> {
+    gri0017()?.row(n, name)
+}
+
+pub fn enel_pick(n: Network, kw: f64, phases: Option<u8>) -> Option<Pick<'static>> {
+    gri0017()?.pick(n, kw, phases)
+}
+
+pub fn delta_pick(amps: f64, phases: Option<u8>) -> Option<Vec<&'static DeltaRow>> {
+    gri0017()?.delta_pick(amps, phases)
 }
 
 fn total(loads: &[Load]) -> (u32, f64) {
     (loads.iter().map(|l| l.count).sum(), loads.iter().map(|l| l.w * f64::from(l.count)).sum::<f64>() / 1000.0)
 }
 
-/// The demand of an installation (item 6.22.1 of the GED) and the load it installs.
+/// The demand of an installation (item 6.22.1 of the GED) and the load it installs, by the library's GED 13.
 pub fn compute(i: &Input) -> Result<Output, String> {
-    // a) lighting and outlets.
-    let (lighting_outlets_w, a, kind) = if i.residential {
-        let kitchen = i.area.and_then(least_outlets).map_or(3, |x| x.1);
-        let outlets_w = match (i.outlets, i.area) {
-            (Some(n), _) => f64::from(n) * 100.0 + f64::from(kitchen) * 600.0,
-            (None, Some(area)) => match least_outlets(area) {
-                Some((n, k)) => f64::from(n) * 100.0 + f64::from(k) * 600.0,
-                None => return Err("above 250 m² the outlets are declared: give `outlets` (100 W each; the kitchen's are added)".into()),
-            },
-            (None, None) => return Err("give the built `area` (m²) or the number of `outlets`".into()),
+    ged13().ok_or("GED 13's tables did not read")?.compute(i)
+}
+
+impl Ged13 {
+    /// The demand of an installation (item 6.22.1 of the GED) and the load it installs, by these tables.
+    pub fn compute(&self, i: &Input) -> Result<Output, String> {
+        let t13 = self;
+        let pts = &t13.dwelling;
+        // a) lighting and outlets.
+        let (lighting_outlets_w, a, kind) = if i.residential {
+            let kitchen = i.area.and_then(|a| t13.least_outlets(a)).map_or(pts.kitchen_outlets, |x| x.1);
+            let outlets_w = match (i.outlets, i.area) {
+                (Some(n), _) => f64::from(n) * pts.outlet_w + f64::from(kitchen) * pts.kitchen_outlet_w,
+                (None, Some(area)) => match t13.least_outlets(area) {
+                    Some((n, k)) => f64::from(n) * pts.outlet_w + f64::from(k) * pts.kitchen_outlet_w,
+                    None => {
+                        return Err("above 250 m² the outlets are declared: give `outlets` (100 W each; the kitchen's are added)".into());
+                    }
+                },
+                (None, None) => return Err("give the built `area` (m²) or the number of `outlets`".into()),
+            };
+            let w = outlets_w + f64::from(i.lighting_points) * pts.lighting_point_w;
+            (w, w / 1000.0 * t13.lighting.at(w / 1000.0), "")
+        } else {
+            let o =
+                i.other.as_ref().ok_or("a building that is not a dwelling declares its lighting and outlets: give `lighting_outlets`")?;
+            let d = t13.commercial_demand(&o.kind, o.kw).ok_or_else(|| format!("no use `{}` in Tabela 15", o.kind))?;
+            (o.kw * 1000.0, d / o.pf, o.kind.as_str())
         };
-        let w = outlets_w + f64::from(i.lighting_points) * 100.0;
-        (w, w / 1000.0 * lighting_factor(w / 1000.0), "")
-    } else {
-        let o = i.other.as_ref().ok_or("a building that is not a dwelling declares its lighting and outlets: give `lighting_outlets`")?;
-        let d = commercial_demand(&o.kind, o.kw).ok_or_else(|| format!("no use `{}` in Tabela 15", o.kind))?;
-        (o.kw * 1000.0, d / o.pf, o.kind.as_str())
-    };
-    let mut t = Terms { a, ..Terms::default() };
-    let mut installed = lighting_outlets_w / 1000.0;
-    // b) showers, taps, instant heaters, irons.
-    let (n, kw) = total(&i.heaters);
-    installed += kw;
-    t.b = kw * if i.residential || heaters_by_table(kind) { heater_factor(n) } else { 1.0 };
-    // c) boilers.
-    let (n, kw) = total(&i.boilers);
-    installed += kw;
-    t.c = kw * boiler_factor(n);
-    // d) dryers, ovens, dishwashers, microwaves.
-    let (n, kw) = total(&i.appliances);
-    installed += kw;
-    t.d = kw * appliance_factor(n);
-    // e) stoves.
-    let (n, kw) = total(&i.stoves);
-    installed += kw;
-    t.e = kw * stove_factor(n);
-    // f) window air conditioners: the installed load in W, the demand in VA.
-    let n: u32 = i.air.iter().map(|a| a.count).sum();
-    installed += i.air.iter().map(|a| a.w * f64::from(a.count)).sum::<f64>() / 1000.0;
-    let va: f64 = i.air.iter().map(|a| a.va * f64::from(a.count)).sum::<f64>() / 1000.0;
-    t.f = va * if i.commercial_air { air_factor(n) } else { 1.0 };
-    // g) motors, the biggest first.
-    let mut motors: Vec<f64> = i.motors.iter().flat_map(|m| std::iter::repeat_n(m.kva, m.count as usize)).collect();
-    motors.sort_by(|a, b| b.total_cmp(a));
-    installed += i.motors.iter().map(|m| m.kw * f64::from(m.count)).sum::<f64>();
-    t.g = motors.iter().enumerate().map(|(r, kva)| kva * motor_factor(r as u32 + 1)).sum();
-    // h) special equipment at a power factor of 0.75.
-    for kind in [SpecialKind::ArcWeld, SpecialKind::ResistanceWeld, SpecialKind::Xray] {
-        let mut v: Vec<f64> =
-            i.special.iter().filter(|s| s.kind == kind).flat_map(|s| std::iter::repeat_n(s.kw, s.count as usize)).collect();
+        let mut t = Terms { a, ..Terms::default() };
+        let mut installed = lighting_outlets_w / 1000.0;
+        // b) showers, taps, instant heaters, irons.
+        let (n, kw) = total(&i.heaters);
+        installed += kw;
+        t.b = kw * if i.residential || t13.heaters_by_table(kind) { t13.heaters.at(f64::from(n)) } else { 1.0 };
+        // c) boilers.
+        let (n, kw) = total(&i.boilers);
+        installed += kw;
+        t.c = kw * t13.boilers.at(f64::from(n));
+        // d) dryers, ovens, dishwashers, microwaves.
+        let (n, kw) = total(&i.appliances);
+        installed += kw;
+        t.d = kw * t13.appliances.at(f64::from(n));
+        // e) stoves.
+        let (n, kw) = total(&i.stoves);
+        installed += kw;
+        t.e = kw * t13.stoves.at(f64::from(n));
+        // f) window air conditioners: the installed load in W, the demand in VA.
+        let n: u32 = i.air.iter().map(|a| a.count).sum();
+        installed += i.air.iter().map(|a| a.w * f64::from(a.count)).sum::<f64>() / 1000.0;
+        let va: f64 = i.air.iter().map(|a| a.va * f64::from(a.count)).sum::<f64>() / 1000.0;
+        t.f = va * if i.commercial_air { t13.commercial_air.at(f64::from(n)) } else { 1.0 };
+        // g) motors, the biggest first.
+        let mut motors: Vec<f64> = i.motors.iter().flat_map(|m| std::iter::repeat_n(m.kva, m.count as usize)).collect();
+        motors.sort_by(|a, b| b.total_cmp(a));
+        installed += i.motors.iter().map(|m| m.kw * f64::from(m.count)).sum::<f64>();
+        t.g = motors.iter().enumerate().map(|(r, kva)| kva * t13.motor_rank.at(f64::from(r as u32 + 1))).sum();
+        // h) special equipment at Tabela 11's power factor, each kind by its factors by rank.
+        let sp = &t13.special;
+        for kind in [SpecialKind::ArcWeld, SpecialKind::ResistanceWeld, SpecialKind::Xray] {
+            let Some(rank) = sp.kinds.get(kind.name()) else {
+                return Err(format!("Tabela 11 has no `{}`", kind.name()));
+            };
+            let mut v: Vec<f64> =
+                i.special.iter().filter(|s| s.kind == kind).flat_map(|s| std::iter::repeat_n(s.kw, s.count as usize)).collect();
+            v.sort_by(|a, b| b.total_cmp(a));
+            installed += v.iter().sum::<f64>();
+            t.h += v
+                .iter()
+                .enumerate()
+                .map(|(r, kw)| {
+                    let f = rank.steps.iter().find(|s| (r + 1) as f64 <= s.0).map_or(rank.beyond, |s| s.1);
+                    kw / sp.power_factor * f
+                })
+                .sum::<f64>();
+        }
+        // i) hydromassage, by Tabela 10, at a power factor of 1.
+        let mut v: Vec<f64> = i.hydro.iter().flat_map(|l| std::iter::repeat_n(l.w / 1000.0, l.count as usize)).collect();
         v.sort_by(|a, b| b.total_cmp(a));
         installed += v.iter().sum::<f64>();
-        t.h += v
-            .iter()
-            .enumerate()
-            .map(|(r, kw)| {
-                let f = match (kind, r) {
-                    (_, 0) => 1.0,
-                    (SpecialKind::ArcWeld, 1) => 0.7,
-                    (SpecialKind::ArcWeld, 2) => 0.4,
-                    (SpecialKind::ArcWeld, _) => 0.3,
-                    (SpecialKind::ResistanceWeld, _) => 0.6,
-                    (SpecialKind::Xray, _) => 0.7,
-                };
-                kw / 0.75 * f
-            })
-            .sum::<f64>();
+        t.i = v.iter().enumerate().map(|(r, kw)| kw * t13.motor_rank.at(f64::from(r as u32 + 1))).sum();
+        let demand_kva = t.a + t.b + t.c + t.d + t.e + t.f + t.g + t.h + t.i;
+        Ok(Output { installed_kw: installed, lighting_outlets_w, terms: t, demand_kva })
     }
-    // i) hydromassage, by Tabela 10, at a power factor of 1.
-    let mut v: Vec<f64> = i.hydro.iter().flat_map(|l| std::iter::repeat_n(l.w / 1000.0, l.count as usize)).collect();
-    v.sort_by(|a, b| b.total_cmp(a));
-    installed += v.iter().sum::<f64>();
-    t.i = v.iter().enumerate().map(|(r, kw)| kw * motor_factor(r as u32 + 1)).sum();
-    let demand_kva = t.a + t.b + t.c + t.d + t.e + t.f + t.g + t.h + t.i;
-    Ok(Output { installed_kw: installed, lighting_outlets_w, terms: t, demand_kva })
 }
 
 /// The networks of Celesc's Tabela 01 (N-321.0001): 220/380 V, whose units are single-phase at 220 V (A), two-phase (B) or
@@ -758,15 +800,19 @@ pub fn compute(i: &Input) -> Result<Output, String> {
 pub const CELESC_NETWORKS: &[&str] = &["220/380", "220/440"];
 
 /// One row of Celesc's Tabela 01: a category of supply for a range of installed load, as printed.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CelescRow {
-    pub name: &'static str,
+    pub name: String,
     /// The installed load (kW) it covers: over `lo`, up to `hi`.
+    #[serde(rename = "over")]
     pub lo: f64,
+    #[serde(rename = "up_to")]
     pub hi: f64,
     /// The demand (kVA) a three-phase row is printed with beside its load: over the first, up to the second.
     pub demand: Option<(f64, f64)>,
     /// The unit's general breaker, A.
+    #[serde(rename = "breaker_a")]
     pub breaker: f64,
     pub phases: u8,
     pub wires: u8,
@@ -778,60 +824,45 @@ pub struct CelescRow {
     pub earth: (f64, f64),
 }
 
-#[allow(clippy::too_many_arguments)]
-const fn celesc(
-    name: &'static str,
-    lo: f64,
-    hi: f64,
-    demand: Option<(f64, f64)>,
-    breaker: f64,
-    phases: u8,
-    wires: u8,
-    connection: (f64, f64),
-    entry: f64,
-    earth: (f64, f64),
-) -> CelescRow {
-    CelescRow { name, lo, hi, demand, breaker, phases, wires, connection, entry, earth }
+/// Tabela 01 of N-321.0001 (rev. December 2025), in its printed order (the `categories` of the `service` section of
+/// `data/codes/electrical/celesc.json`); empty if it does not read, which a test keeps from happening.
+pub fn celesc_01() -> &'static Rows<CelescRow> {
+    static T: OnceLock<Rows<CelescRow>> = OnceLock::new();
+    T.get_or_init(|| service("celesc").and_then(|s| s.categories.clone()).unwrap_or_default())
 }
 
-/// Tabela 01 of N-321.0001 (rev. December 2025), in its printed order.
-const CELESC_01: &[CelescRow] = &[
-    celesc("A1", 0.0, 11.0, None, 50.0, 1, 2, (10.0, 10.0), 10.0, (10.0, 16.0)),
-    celesc("A2", 11.0, 13.0, None, 63.0, 1, 2, (10.0, 10.0), 10.0, (10.0, 16.0)),
-    celesc("M1", 0.0, 22.0, None, 50.0, 2, 3, (10.0, 10.0), 10.0, (10.0, 16.0)),
-    celesc("M2", 22.0, 28.0, None, 63.0, 2, 3, (10.0, 10.0), 10.0, (10.0, 16.0)),
-    celesc("M3", 28.0, 37.0, None, 90.0, 2, 3, (16.0, 25.0), 16.0, (16.0, 16.0)),
-    celesc("M4", 37.0, 50.0, None, 100.0, 2, 3, (16.0, 25.0), 25.0, (16.0, 25.0)),
-    celesc("B1", 13.0, 20.0, None, 50.0, 2, 3, (10.0, 10.0), 10.0, (10.0, 16.0)),
-    celesc("B2", 20.0, 25.0, None, 63.0, 2, 3, (10.0, 10.0), 10.0, (10.0, 16.0)),
-    celesc("C1", 25.0, 30.0, Some((0.0, 30.0)), 50.0, 3, 4, (10.0, 10.0), 10.0, (10.0, 16.0)),
-    celesc("C2", 30.0, 42.0, Some((30.0, 40.0)), 63.0, 3, 4, (10.0, 25.0), 16.0, (16.0, 16.0)),
-    celesc("C3", 42.0, 50.0, Some((40.0, 45.0)), 80.0, 3, 4, (16.0, 25.0), 16.0, (16.0, 16.0)),
-    celesc("C4", 50.0, 65.0, Some((45.0, 60.0)), 100.0, 3, 4, (25.0, 35.0), 25.0, (16.0, 25.0)),
-    celesc("C5", 65.0, 75.0, Some((60.0, 75.0)), 125.0, 3, 4, (35.0, 50.0), 50.0, (16.0, 35.0)),
-];
+impl Rows<CelescRow> {
+    /// A row of Celesc's Tabela 01 by its name.
+    pub fn row(&self, name: &str) -> Option<&CelescRow> {
+        self.rows.iter().find(|r| r.name == name)
+    }
 
-/// A row of Celesc's Tabela 01 by its name.
+    /// The rows of Tabela 01 a unit on `network` (`220/380` or `220/440`) may take: A, B and C on the first, A and M on the
+    /// second.
+    fn on(&self, network: &str) -> impl Iterator<Item = &CelescRow> {
+        let m = network == "220/440";
+        self.rows.iter().filter(move |r| r.name.starts_with('A') || r.name.starts_with('M') == m)
+    }
+
+    /// The row of Tabela 01 for an installed load of `kw` on `network`: the one whose range holds it, of `phases` phases if
+    /// given (a unit with a two- or three-phase appliance takes that supply whatever its load, items 5.3.2.2 and 5.3.2.3), else
+    /// the first of those phases that goes higher. `None` above the table (75 kW, or 50 kW on 220/440 V).
+    pub fn pick(&self, network: &str, kw: f64, phases: Option<u8>) -> Option<&CelescRow> {
+        let fits = |r: &&CelescRow| phases.is_none_or(|p| r.phases == p);
+        self.on(network)
+            .filter(fits)
+            .find(|r| kw > r.lo && kw <= r.hi || (r.lo == 0.0 && kw <= r.hi))
+            .or_else(|| phases.and_then(|_| self.on(network).filter(fits).find(|r| r.hi >= kw)))
+    }
+}
+
 pub fn celesc_row(name: &str) -> Option<&'static CelescRow> {
-    CELESC_01.iter().find(|r| r.name == name)
+    celesc_01().row(name)
 }
 
-/// The rows of Tabela 01 a unit on `network` (`220/380` or `220/440`) may take: A, B and C on the first, A and M on the second.
-fn celesc_rows(network: &str) -> impl Iterator<Item = &'static CelescRow> {
-    let m = network == "220/440";
-    CELESC_01.iter().filter(move |r| r.name.starts_with('A') || r.name.starts_with('M') == m)
-}
-
-/// The row of Tabela 01 for an installed load of `kw` on `network`: the one whose range holds it, of `phases` phases if given
-/// (a unit with a two- or three-phase appliance takes that supply whatever its load, items 5.3.2.2 and 5.3.2.3), else the first of
-/// those phases that goes higher. `None` above the table (75 kW, or 50 kW on 220/440 V).
 pub fn celesc_pick(network: &str, kw: f64, phases: Option<u8>) -> Option<&'static CelescRow> {
-    let fits = |r: &&CelescRow| phases.is_none_or(|p| r.phases == p);
-    celesc_rows(network)
-        .filter(fits)
-        .find(|r| kw > r.lo && kw <= r.hi || (r.lo == 0.0 && kw <= r.hi))
-        .or_else(|| phases.and_then(|_| celesc_rows(network).filter(fits).find(|r| r.hi >= kw)))
+    celesc_01().pick(network, kw, phases)
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

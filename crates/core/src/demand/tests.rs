@@ -2,6 +2,17 @@
 
 use super::*;
 
+/// `field` of section `key` changed in the project's copy of amendment `code`: how a project changes a utility's tables.
+pub(crate) fn hold(
+    s: &mut crate::engine::Session,
+    code: &str,
+    key: &str,
+    field: &str,
+    value: serde_json::Value,
+) -> Result<serde_json::Value, String> {
+    s.execute("building_code", &serde_json::json!({"discipline": "electrical", "amend": code, "rules": {key: {field: value}}}))
+}
+
 fn near(a: f64, b: f64, e: f64) -> bool {
     (a - b).abs() <= e
 }
@@ -32,22 +43,22 @@ fn tabela_2_gives_the_least_outlets_by_built_area() {
 fn the_factors_are_as_printed() {
     // Tabela 3
     for (c, f) in [(0.5, 0.86), (1.0, 0.86), (1.5, 0.75), (4.2, 0.52), (6.0, 0.45), (10.0, 0.27), (10.1, 0.24), (40.0, 0.24)] {
-        assert!(near(lighting_factor(c), f, 1e-9), "{c} kW");
+        assert!(near(lighting_factor(c).unwrap(), f, 1e-9), "{c} kW");
     }
     // Tabela 4
     for (n, f) in [(1, 1.0), (2, 1.0), (3, 0.84), (6, 0.65), (7, 0.60), (13, 0.46), (20, 0.40), (25, 0.38), (40, 0.38)] {
-        assert!(near(heater_factor(n), f, 1e-9), "{n}");
+        assert!(near(heater_factor(n).unwrap(), f, 1e-9), "{n}");
     }
     // Tabela 5, 6, 7, 9
-    assert_eq!([1, 2, 3, 9].map(boiler_factor), [1.0, 0.72, 0.62, 0.62]);
-    assert_eq!([1, 2, 4, 5, 6, 7, 8, 9].map(appliance_factor), [1.0, 0.7, 0.7, 0.6, 0.6, 0.5, 0.5, 0.5]);
+    assert_eq!([1, 2, 3, 9].map(|n| boiler_factor(n).unwrap()), [1.0, 0.72, 0.62, 0.62]);
+    assert_eq!([1, 2, 4, 5, 6, 7, 8, 9].map(|n| appliance_factor(n).unwrap()), [1.0, 0.7, 0.7, 0.6, 0.6, 0.5, 0.5, 0.5]);
     assert_eq!(
-        [1, 2, 3, 4, 9, 10, 11, 12, 15, 16, 25, 30].map(stove_factor),
+        [1, 2, 3, 4, 9, 10, 11, 12, 15, 16, 25, 30].map(|n| stove_factor(n).unwrap()),
         [1.0, 0.6, 0.48, 0.4, 0.31, 0.3, 0.3, 0.28, 0.28, 0.26, 0.26, 0.26]
     );
-    assert_eq!([1, 10, 11, 20, 21, 31, 51, 200].map(air_factor), [1.0, 1.0, 0.9, 0.9, 0.82, 0.8, 0.75, 0.75]);
+    assert_eq!([1, 10, 11, 20, 21, 31, 51, 200].map(|n| air_factor(n).unwrap()), [1.0, 1.0, 0.9, 0.9, 0.82, 0.8, 0.75, 0.75]);
     // Tabela 10, by the rank of the motor
-    assert_eq!([1, 2, 3, 5, 6].map(motor_factor), [1.0, 0.9, 0.8, 0.8, 0.7]);
+    assert_eq!([1, 2, 3, 5, 6].map(|n| motor_factor(n).unwrap()), [1.0, 0.9, 0.8, 0.8, 0.7]);
 }
 
 #[test]
@@ -70,7 +81,7 @@ fn the_tables_of_equipment_are_as_printed() {
 
 #[test]
 fn the_category_follows_the_load_and_the_demand() {
-    let a = |c: f64, d: f64| category(System::S127_220, c, d).map(|k| k.name);
+    let a = |c: f64, d: f64| category(System::S127_220, c, d).map(|k| k.name.as_str());
     assert_eq!(a(5.0, 0.0), Some("A1"));
     assert_eq!(a(10.0, 0.0), Some("A2"));
     assert_eq!(a(15.0, 0.0), Some("B1"));
@@ -81,7 +92,7 @@ fn the_category_follows_the_load_and_the_demand() {
     assert_eq!(a(70.0, 76.0), Some("C6"));
     assert_eq!(a(70.0, 76.1), None);
     assert_eq!(a(75.1, 10.0), None);
-    let b = |c: f64, d: f64| category(System::S220_380, c, d).map(|k| k.name);
+    let b = |c: f64, d: f64| category(System::S220_380, c, d).map(|k| k.name.as_str());
     assert_eq!(b(9.0, 0.0), Some("A3"));
     assert_eq!(b(14.0, 0.0), Some("A4"));
     assert_eq!(b(20.0, 0.0), Some("B3"));
@@ -195,6 +206,62 @@ mod command {
     }
 
     #[test]
+    fn the_project_s_change_to_its_utility_s_tables_changes_the_demand_and_no_other_utility_s() {
+        let mut s = Session::new();
+        let before = run(&mut s, example_3())["demand_kva"].as_f64().unwrap();
+        let mut t = crate::demand::ged13().unwrap().clone();
+        t.heaters.steps = vec![(1000.0, 0.5)];
+        t.heaters.beyond = 0.5;
+        let installation = serde_json::to_value(&t).unwrap();
+        s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["cpfl"]})).unwrap();
+        super::hold(&mut s, "cpfl", "service", "installation", installation).unwrap();
+        let after = run(&mut s, example_3())["demand_kva"].as_f64().unwrap();
+        assert!(after < before - 1.0, "Tabela 4 at 0.5 lowers the demand: {before} -> {after}");
+        // The change is to the code the project holds: another utility's project leaves CPFL's tables as printed.
+        s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["celesc"]})).unwrap();
+        assert_eq!(run(&mut s, example_3())["demand_kva"].as_f64().unwrap(), before);
+    }
+
+    #[test]
+    fn the_project_s_change_to_enel_s_and_celesc_s_rows_changes_the_category() {
+        let mut s = Session::new();
+        let p = json!({"utility": "CELESC", "installed_kw": 5});
+        let name = run(&mut s, p.clone())["category"]["name"].clone();
+        let mut t = crate::demand::celesc_01().clone();
+        let r = t.rows.iter_mut().find(|r| r.name == name.as_str().unwrap()).unwrap();
+        r.name = "X1".into();
+        s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["celesc"]})).unwrap();
+        super::hold(&mut s, "celesc", "service", "categories", json!(t)).unwrap();
+        assert_eq!(run(&mut s, p)["category"]["name"], "X1");
+
+        let p = json!({"utility": "ENEL", "network": "aerial", "installed_kw": 5});
+        let name = run(&mut s, p.clone())["category"]["name"].clone();
+        let mut t = crate::demand::gri0017().unwrap().clone();
+        let r = t.aerial.rows.iter_mut().find(|r| r.name == name.as_str().unwrap()).unwrap();
+        r.breaker += 1.0;
+        let breaker = r.breaker;
+        s.execute("building_code", &json!({"discipline": "electrical", "amendments": ["enel"]})).unwrap();
+        super::hold(&mut s, "enel", "service", "annexes", json!(t)).unwrap();
+        assert_eq!(run(&mut s, p)["category"]["breaker_a"], breaker);
+    }
+
+    #[test]
+    fn a_change_to_celesc_s_table_never_reaches_cpfl_s_or_enel_s() {
+        let mut s = Session::new();
+        let enel = json!({"utility": "ENEL", "network": "aerial", "installed_kw": 10});
+        let (a, b) = (run(&mut s, example_3()), run(&mut s, enel.clone()));
+        let mut t = crate::demand::celesc_01().clone();
+        for r in &mut t.rows {
+            r.breaker += 1.0;
+        }
+        s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["celesc", "cpfl", "enel"]}))
+            .unwrap();
+        super::hold(&mut s, "celesc", "service", "categories", json!(t)).unwrap();
+        assert_eq!(run(&mut s, example_3()), a);
+        assert_eq!(run(&mut s, enel), b);
+    }
+
+    #[test]
     fn the_ged_example_comes_out() {
         let mut s = Session::new();
         let r = run(&mut s, example_3());
@@ -299,7 +366,7 @@ fn enel_anexo_d_is_as_printed() {
 
 #[test]
 fn enel_picks_the_row_whose_range_holds_the_load() {
-    let name = |n: Network, c: f64, ph: Option<u8>| enel_pick(n, c, ph).map(|p| p.rows.iter().map(|r| r.name).collect::<Vec<_>>());
+    let name = |n: Network, c: f64, ph: Option<u8>| enel_pick(n, c, ph).map(|p| p.rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>());
     // Every range that holds the load, the smaller supply first: version 02's ranges overlap.
     assert_eq!(name(Network::Aerial, 3.0, None), Some(vec!["A1", "B1"]));
     assert_eq!(name(Network::Aerial, 5.0, Some(1)), Some(vec!["A1"]));
@@ -412,9 +479,9 @@ fn enel_anexo_c_and_e_are_as_printed() {
     assert_eq!(r(Network::Submersible, "C5"), Some((160.0, (None, 95.0, 95.0), (70.0, 70.0), 35.0)));
     assert_eq!(r(Network::Submersible, "C7"), Some((225.0, (None, 150.0, 150.0), (120.0, 120.0), 70.0)));
     assert_eq!(r(Network::Submersible, "C9"), Some((300.0, (None, 185.0, 185.0), (185.0, 185.0), 95.0)));
-    assert_eq!(enel_row(Network::Submersible, "C4").and_then(|r| r.junction_box), Some("type 3"));
-    assert_eq!(enel_row(Network::Submersible, "C3").and_then(|r| r.junction_box), Some("type 2"));
-    let name = |n: Network, c: f64| enel_pick(n, c, None).map(|p| p.rows.iter().map(|r| r.name).collect::<Vec<_>>());
+    assert_eq!(enel_row(Network::Submersible, "C4").and_then(|r| r.junction_box.as_deref()), Some("type 3"));
+    assert_eq!(enel_row(Network::Submersible, "C3").and_then(|r| r.junction_box.as_deref()), Some("type 2"));
+    let name = |n: Network, c: f64| enel_pick(n, c, None).map(|p| p.rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>());
     // Version 02's limits: A1 up to 5 kW, A2 to 6, B1 to 12.
     assert_eq!(name(Network::Aerial120240, 5.0), Some(vec!["A1"]));
     assert_eq!(name(Network::Aerial120240, 5.5), Some(vec!["A2"]));
@@ -441,7 +508,7 @@ fn enel_anexo_b_is_picked_by_the_current_of_the_demand() {
     assert_eq!(first(190.0, None).map(|r| r.earth), Some(50.0));
     let r = delta_pick(250.0, None).and_then(|r| r.first().copied());
     assert_eq!(
-        r.map(|r| (r.breaker, r.connection, r.entry, r.earth, r.measurement)),
+        r.map(|r| (r.breaker, r.connection, r.entry, r.earth, r.measurement.as_str())),
         Some((275.0, (Some(3), 150.0, 80.0), 150.0, 95.0, "indirect"))
     );
 }
@@ -514,13 +581,13 @@ fn celesc_tabela_01_is_as_printed() {
         assert_eq!((r.phases, r.wires, r.connection, r.entry, r.earth), (phases, wires, connection, entry, earth), "{name}");
         // Each row is picked at the top of its range, on its network.
         let network = if name.starts_with('M') { "220/440" } else { "220/380" };
-        assert_eq!(celesc_pick(network, hi, Some(phases)).map(|r| r.name), Some(name), "{name} at {hi} kW");
+        assert_eq!(celesc_pick(network, hi, Some(phases)).map(|r| r.name.as_str()), Some(name), "{name} at {hi} kW");
     }
 }
 
 #[test]
 fn celesc_frames_a_unit_by_its_installed_load() {
-    let name = |network: &str, kw: f64, phases: Option<u8>| celesc_pick(network, kw, phases).map(|r| r.name);
+    let name = |network: &str, kw: f64, phases: Option<u8>| celesc_pick(network, kw, phases).map(|r| r.name.as_str());
     // On 220/380 V: single-phase up to 13 kW, two-phase up to 25 kW, three-phase up to 75 kW (items 5.3.2.1 to 5.3.2.3).
     assert_eq!(name("220/380", 4.0, None), Some("A1"));
     assert_eq!(name("220/380", 12.0, None), Some("A2"));
@@ -593,4 +660,137 @@ mod celesc_command {
             assert!(s.execute("demand", &p).is_err(), "{p}");
         }
     }
+}
+
+#[test]
+fn the_utilities_tables_are_data_that_read_with_their_sources() {
+    let t = ged13().expect("cpfl.json's demand.installation reads");
+    let e = gri0017().expect("enel.json's demand.annexes reads");
+    assert!(!celesc_01().rows.is_empty() && celesc_01().source.contains("Tabela 01"), "celesc.json's demand.categories reads");
+    for s in [&t.lighting, &t.heaters, &t.boilers, &t.appliances, &t.stoves, &t.commercial_air, &t.motor_rank] {
+        assert!(s.source.contains("Tabela"), "{}: a table names itself", s.source);
+        assert!(s.steps.windows(2).all(|w| w[0].0 < w[1].0), "{}: bounds in order", s.source);
+    }
+    for (name, rows) in &t.categories.systems {
+        let three: Vec<f64> = rows.iter().filter_map(|r| r.demand_up_to).collect();
+        assert!(three.windows(2).all(|w| w[0] < w[1]), "{name}: demands in order");
+    }
+    for u in &t.commercial.uses {
+        assert!(u.bands.last().is_some_and(|b| b.0.is_none()), "{}: the last band is open", u.use_);
+    }
+    for a in [&e.aerial, &e.aerial_120_240, &e.underground, &e.underground_submersible] {
+        assert!(a.source.contains(&format!("Anexo {}", a.annex)) && !a.rows.is_empty());
+    }
+    assert!(e.aerial_delta.source.contains("Anexo B"));
+}
+
+/// FNV-1a over the tables as they read back, so a number changed anywhere in them, or a row lost, fails here.
+fn digest<T: serde::Serialize>(t: &T) -> u64 {
+    let text = serde_json::to_string(t).unwrap();
+    text.bytes().fold(0xcbf2_9ce4_8422_2325, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3))
+}
+
+#[test]
+fn the_utilities_tables_are_the_ones_checked_against_their_documents() {
+    // These were checked number by number against the old tables in Rust before the data replaced them. A change to a table is a
+    // change to these: check the table against its document again, then put the new digest here.
+    let got = [("cpfl", digest(ged13().unwrap())), ("enel", digest(gri0017().unwrap())), ("celesc", digest(celesc_01()))];
+    let want: [(&str, u64); 3] = [("cpfl", 6187348974279220855), ("enel", 5831328982217625153), ("celesc", 8781359844527856452)];
+    assert_eq!(got, want);
+}
+
+#[test]
+fn a_category_row_comes_in_the_order_it_is_picked() {
+    for (name, rows) in &ged13().unwrap().categories.systems {
+        assert!(rows.windows(2).all(|w| w[0].installed_up_to <= w[1].installed_up_to), "{name}: installed loads in order");
+        for r in rows {
+            assert_eq!(r.demand_up_to.is_some(), r.phases == 3 && r.installed_up_to > 25.0, "{name} {}: a demand only above 25 kW", r.name);
+        }
+    }
+}
+
+#[test]
+fn only_anexo_e_names_a_junction_box_and_every_row_of_it_does() {
+    let e = gri0017().unwrap();
+    assert!(e.underground_submersible.rows.iter().all(|r| r.junction_box.as_deref().is_some_and(|b| !b.is_empty())), "Anexo E");
+    for a in [&e.aerial, &e.aerial_120_240, &e.underground] {
+        assert!(a.rows.iter().all(|r| r.junction_box.is_none()), "Anexo {} prints no junction box", a.annex);
+    }
+}
+
+#[test]
+fn a_utility_s_table_with_a_number_that_cannot_be_is_refused() {
+    let mut s = crate::engine::Session::new();
+    s.execute("building_code", &serde_json::json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["celesc"]})).unwrap();
+    let mut t = celesc_01().clone();
+    let good = serde_json::to_value(&t).unwrap();
+    t.rows[0].breaker = -40.0;
+    let r = hold(&mut s, "celesc", "service", "categories", serde_json::json!(t));
+    assert!(r.is_err(), "a negative breaker is refused");
+    hold(&mut s, "celesc", "service", "categories", good).unwrap();
+}
+
+#[test]
+fn a_demand_factor_above_1_is_refused() {
+    use serde_json::json;
+    let mut s = crate::engine::Session::new();
+    s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["cpfl"]})).unwrap();
+    let mut t = ged13().unwrap().clone();
+    t.heaters.steps = vec![(1000.0, 11.0)];
+    assert!(hold(&mut s, "cpfl", "service", "installation", json!(t)).is_err());
+}
+
+#[test]
+fn a_demand_factor_table_out_of_order_is_refused() {
+    use serde_json::json;
+    let mut s = crate::engine::Session::new();
+    s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["cpfl"]})).unwrap();
+    let mut t = ged13().unwrap().clone();
+    t.heaters.steps = vec![(2.0, 0.5), (1.0, 0.6)];
+    assert!(hold(&mut s, "cpfl", "service", "installation", json!(t)).is_err());
+}
+
+#[test]
+fn a_utility_s_tables_changed_by_the_project_go_out_as_xml_and_come_back() {
+    use serde_json::json;
+    let mut s = crate::engine::Session::new();
+    let p = json!({"utility": "CELESC", "installed_kw": 5});
+    let name = s.execute("demand", &p).unwrap()["category"]["name"].clone();
+    let mut t = crate::demand::celesc_01().clone();
+    let r = t.rows.iter_mut().find(|r| r.name == name.as_str().unwrap()).unwrap();
+    r.breaker += 1.0;
+    let breaker = r.breaker;
+    s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["celesc"]})).unwrap();
+    hold(&mut s, "celesc", "service", "categories", json!(t)).unwrap();
+    assert_eq!(s.execute("demand", &p).unwrap()["category"]["breaker_a"], breaker);
+
+    let dir = std::env::temp_dir().join(format!("bimcraft-service-xml-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("celesc.xml").to_string_lossy().to_string();
+    s.execute("building_code_export", &json!({"discipline": "electrical", "path": path, "name": "Celesc as changed"})).unwrap();
+    let mut other = crate::engine::Session::new();
+    let r = other.execute("building_code_import", &json!({"path": path, "set": true})).unwrap();
+    assert_eq!(r["left_out"], json!([]), "a utility's tables are rules the section knows");
+    assert_eq!(other.execute("demand", &p).unwrap()["category"]["breaker_a"], breaker, "the changed table came back");
+}
+
+#[test]
+fn a_band_with_no_load_is_the_last_one() {
+    use serde_json::{Value, json};
+    // The first table with bands, wherever it is.
+    fn first(v: &mut Value) -> Option<&mut Value> {
+        if v.get("bands").is_some() {
+            return v.get_mut("bands");
+        }
+        match v {
+            Value::Object(m) => m.values_mut().find_map(first),
+            Value::Array(a) => a.iter_mut().find_map(first),
+            _ => None,
+        }
+    }
+    let mut s = crate::engine::Session::new();
+    s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["cpfl"]})).unwrap();
+    let mut t = serde_json::to_value(ged13().unwrap()).unwrap();
+    *first(&mut t).unwrap() = json!([[null, 0.1], [20, 1]]);
+    assert!(hold(&mut s, "cpfl", "service", "installation", t).is_err());
 }

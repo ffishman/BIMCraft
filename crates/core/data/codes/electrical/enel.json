@@ -1,0 +1,937 @@
+{
+ "code": "enel",
+ "discipline": "electrical",
+ "name": "Enel Distribuição (Rio, São Paulo, Ceará)",
+ "region": "Brasil",
+ "edition": "02",
+ "amends": "nbr-5410",
+ "references": [
+  "Enel GRI-0017 (the former ET 1569), version 02, 06/03/2025"
+ ],
+ "note": "The utility's own standard over NBR 5410. Frames a supply by the installed load; the demand of a three-phase supply is the designer's (Anexo A, note 11).",
+ "documents": {
+  "gri0017": {
+   "title": "Enel GRI-0017, Fornecimento de Energia Elétrica em Tensão Secundária de Distribuição até 1 kV - Conexão Individual",
+   "edition": "version 02, 06/03/2025",
+   "publisher": "Enel Grids Brasil"
+  }
+ },
+ "checked": "Transcribed from the document's own tables and tested against its worked examples (#474); not yet checked by a second contributor.",
+ "sections": {
+  "service": {
+   "annexes": {
+    "source": "Enel Grids Brasil, Especificação Técnica GRI-0017 (GRI-EDBR-CNC-GRI-0017 / CNC-NDBR-DBR-24-1569-EDBR) 'Fornecimento de Energia Elétrica em Tensão Secundária de Distribuição até 1 kV - Conexão Individual', version 02, 06/03/2025: Anexos A to E",
+    "aerial": {
+     "annex": "A",
+     "source": "GRI-0017 v02, Anexo A: aerial network, 127/220 V (Enel Rio); a range starts where the one before ends",
+     "rows": [
+      {
+       "name": "A1",
+       "over": 0.0,
+       "up_to": 5.0,
+       "breaker_a": 40.0,
+       "connection": [
+        1,
+        10.0,
+        10.0
+       ],
+       "entry": [
+        10.0,
+        10.0
+       ],
+       "earth": 10.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "A2",
+       "over": 5.0,
+       "up_to": 8.0,
+       "breaker_a": 63.0,
+       "connection": [
+        1,
+        16.0,
+        10.0
+       ],
+       "entry": [
+        16.0,
+        10.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "B1",
+       "over": 0.0,
+       "up_to": 11.0,
+       "breaker_a": 50.0,
+       "connection": [
+        2,
+        10.0,
+        10.0
+       ],
+       "entry": [
+        10.0,
+        10.0
+       ],
+       "earth": 10.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "B2",
+       "over": 11.0,
+       "up_to": 14.0,
+       "breaker_a": 63.0,
+       "connection": [
+        2,
+        16.0,
+        10.0
+       ],
+       "entry": [
+        16.0,
+        10.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C1",
+       "over": 10.0,
+       "up_to": 15.0,
+       "breaker_a": 40.0,
+       "connection": [
+        3,
+        10.0,
+        10.0
+       ],
+       "entry": [
+        10.0,
+        10.0
+       ],
+       "earth": 10.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C2",
+       "over": 15.0,
+       "up_to": 19.1,
+       "breaker_a": 50.0,
+       "connection": [
+        3,
+        10.0,
+        10.0
+       ],
+       "entry": [
+        10.0,
+        10.0
+       ],
+       "earth": 10.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C3",
+       "over": 19.1,
+       "up_to": 24.0,
+       "breaker_a": 63.0,
+       "connection": [
+        3,
+        16.0,
+        16.0
+       ],
+       "entry": [
+        25.0,
+        25.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C4",
+       "over": 24.0,
+       "up_to": 30.0,
+       "breaker_a": 80.0,
+       "connection": [
+        3,
+        35.0,
+        54.6
+       ],
+       "entry": [
+        25.0,
+        25.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C5",
+       "over": 30.0,
+       "up_to": 38.0,
+       "breaker_a": 100.0,
+       "connection": [
+        3,
+        35.0,
+        54.6
+       ],
+       "entry": [
+        35.0,
+        25.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C6",
+       "over": 38.0,
+       "up_to": 48.0,
+       "breaker_a": 125.0,
+       "connection": [
+        3,
+        35.0,
+        54.6
+       ],
+       "entry": [
+        50.0,
+        25.0
+       ],
+       "earth": 25.0,
+       "measurement": "direct or indirect"
+      },
+      {
+       "name": "C7",
+       "over": 48.0,
+       "up_to": 57.1,
+       "breaker_a": 150.0,
+       "connection": [
+        3,
+        50.0,
+        54.6
+       ],
+       "entry": [
+        70.0,
+        35.0
+       ],
+       "earth": 35.0,
+       "measurement": "direct or indirect"
+      },
+      {
+       "name": "C8",
+       "over": 57.1,
+       "up_to": 67.0,
+       "breaker_a": 175.0,
+       "connection": [
+        3,
+        50.0,
+        54.6
+       ],
+       "entry": [
+        95.0,
+        50.0
+       ],
+       "earth": 50.0,
+       "measurement": "direct or indirect"
+      },
+      {
+       "name": "C9",
+       "over": 67.0,
+       "up_to": 75.0,
+       "breaker_a": 200.0,
+       "connection": [
+        3,
+        95.0,
+        54.6
+       ],
+       "entry": [
+        95.0,
+        50.0
+       ],
+       "earth": 50.0,
+       "measurement": "direct or indirect"
+      }
+     ]
+    },
+    "aerial_120_240": {
+     "annex": "C",
+     "source": "GRI-0017 v02, Anexo C: aerial network, 120/240 V (Enel Rio)",
+     "rows": [
+      {
+       "name": "A1",
+       "over": 0.0,
+       "up_to": 5.0,
+       "breaker_a": 40.0,
+       "connection": [
+        1,
+        10.0,
+        10.0
+       ],
+       "entry": [
+        10.0,
+        10.0
+       ],
+       "earth": 10.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "A2",
+       "over": 5.0,
+       "up_to": 6.0,
+       "breaker_a": 50.0,
+       "connection": [
+        1,
+        16.0,
+        16.0
+       ],
+       "entry": [
+        16.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "B1",
+       "over": 6.0,
+       "up_to": 12.0,
+       "breaker_a": 50.0,
+       "connection": [
+        2,
+        16.0,
+        16.0
+       ],
+       "entry": [
+        16.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      }
+     ]
+    },
+    "underground": {
+     "annex": "D",
+     "source": "GRI-0017 v02, Anexo D: underground network, surface standard, 127/220 V (Enel Rio and São Paulo)",
+     "rows": [
+      {
+       "name": "A1",
+       "over": 0.0,
+       "up_to": 8.0,
+       "breaker_a": 63.0,
+       "connection": [
+        null,
+        16.0,
+        16.0
+       ],
+       "entry": [
+        16.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "A2",
+       "over": 8.0,
+       "up_to": 10.0,
+       "breaker_a": 80.0,
+       "connection": [
+        null,
+        25.0,
+        16.0
+       ],
+       "entry": [
+        25.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "B1",
+       "over": 10.0,
+       "up_to": 14.0,
+       "breaker_a": 63.0,
+       "connection": [
+        null,
+        16.0,
+        16.0
+       ],
+       "entry": [
+        16.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "B2",
+       "over": 14.0,
+       "up_to": 18.0,
+       "breaker_a": 80.0,
+       "connection": [
+        null,
+        25.0,
+        25.0
+       ],
+       "entry": [
+        25.0,
+        25.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C1",
+       "over": 18.0,
+       "up_to": 24.0,
+       "breaker_a": 63.0,
+       "connection": [
+        null,
+        16.0,
+        16.0
+       ],
+       "entry": [
+        16.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C2",
+       "over": 24.0,
+       "up_to": 30.0,
+       "breaker_a": 80.0,
+       "connection": [
+        null,
+        25.0,
+        16.0
+       ],
+       "entry": [
+        25.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "name": "C3",
+       "over": 30.0,
+       "up_to": 48.0,
+       "breaker_a": 125.0,
+       "connection": [
+        null,
+        50.0,
+        25.0
+       ],
+       "entry": [
+        50.0,
+        25.0
+       ],
+       "earth": 25.0,
+       "measurement": "indirect"
+      },
+      {
+       "name": "C4",
+       "over": 48.0,
+       "up_to": 57.1,
+       "breaker_a": 150.0,
+       "connection": [
+        null,
+        95.0,
+        25.0
+       ],
+       "entry": [
+        50.0,
+        25.0
+       ],
+       "earth": 50.0,
+       "measurement": "indirect"
+      },
+      {
+       "name": "C5",
+       "over": 57.1,
+       "up_to": 67.0,
+       "breaker_a": 175.0,
+       "connection": [
+        null,
+        95.0,
+        25.0
+       ],
+       "entry": [
+        95.0,
+        25.0
+       ],
+       "earth": 95.0,
+       "measurement": "direct (a 200 A meter) or indirect"
+      },
+      {
+       "name": "C6",
+       "over": 67.0,
+       "up_to": 75.0,
+       "breaker_a": 200.0,
+       "connection": [
+        null,
+        150.0,
+        95.0
+       ],
+       "entry": [
+        150.0,
+        95.0
+       ],
+       "earth": 95.0,
+       "measurement": "direct (a 200 A meter) or indirect"
+      }
+     ]
+    },
+    "underground_submersible": {
+     "annex": "E",
+     "source": "GRI-0017 v02, Anexo E: underground network, submersible (Enel São Paulo)",
+     "rows": [
+      {
+       "name": "B1",
+       "over": 10.0,
+       "up_to": 12.0,
+       "breaker_a": 63.0,
+       "connection": [
+        null,
+        16.0,
+        16.0
+       ],
+       "entry": [
+        16.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct",
+       "junction_box": "type 2"
+      },
+      {
+       "name": "B2",
+       "over": 13.0,
+       "up_to": 16.0,
+       "breaker_a": 80.0,
+       "connection": [
+        null,
+        25.0,
+        25.0
+       ],
+       "entry": [
+        25.0,
+        25.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct",
+       "junction_box": "type 2"
+      },
+      {
+       "name": "B3",
+       "over": 16.0,
+       "up_to": 20.0,
+       "breaker_a": 100.0,
+       "connection": [
+        null,
+        35.0,
+        35.0
+       ],
+       "entry": [
+        35.0,
+        35.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct",
+       "junction_box": "type 2"
+      },
+      {
+       "name": "C1",
+       "over": 18.0,
+       "up_to": 20.0,
+       "breaker_a": 63.0,
+       "connection": [
+        null,
+        16.0,
+        16.0
+       ],
+       "entry": [
+        16.0,
+        16.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct",
+       "junction_box": "type 2"
+      },
+      {
+       "name": "C2",
+       "over": 20.0,
+       "up_to": 28.0,
+       "breaker_a": 80.0,
+       "connection": [
+        null,
+        25.0,
+        25.0
+       ],
+       "entry": [
+        25.0,
+        25.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct",
+       "junction_box": "type 2"
+      },
+      {
+       "name": "C3",
+       "over": 29.0,
+       "up_to": 36.0,
+       "breaker_a": 100.0,
+       "connection": [
+        null,
+        35.0,
+        35.0
+       ],
+       "entry": [
+        35.0,
+        35.0
+       ],
+       "earth": 16.0,
+       "measurement": "direct",
+       "junction_box": "type 2"
+      },
+      {
+       "name": "C4",
+       "over": 37.0,
+       "up_to": 45.0,
+       "breaker_a": 125.0,
+       "connection": [
+        null,
+        50.0,
+        50.0
+       ],
+       "entry": [
+        50.0,
+        50.0
+       ],
+       "earth": 25.0,
+       "measurement": "indirect",
+       "junction_box": "type 3"
+      },
+      {
+       "name": "C5",
+       "over": 46.0,
+       "up_to": 54.0,
+       "breaker_a": 160.0,
+       "connection": [
+        null,
+        95.0,
+        95.0
+       ],
+       "entry": [
+        70.0,
+        70.0
+       ],
+       "earth": 35.0,
+       "measurement": "indirect",
+       "junction_box": "type 3"
+      },
+      {
+       "name": "C6",
+       "over": 54.0,
+       "up_to": 65.0,
+       "breaker_a": 200.0,
+       "connection": [
+        null,
+        150.0,
+        150.0
+       ],
+       "entry": [
+        95.0,
+        95.0
+       ],
+       "earth": 50.0,
+       "measurement": "indirect",
+       "junction_box": "type 3"
+      },
+      {
+       "name": "C7",
+       "over": 66.0,
+       "up_to": 80.0,
+       "breaker_a": 225.0,
+       "connection": [
+        null,
+        150.0,
+        150.0
+       ],
+       "entry": [
+        120.0,
+        120.0
+       ],
+       "earth": 70.0,
+       "measurement": "indirect",
+       "junction_box": "type 3"
+      },
+      {
+       "name": "C8",
+       "over": 81.0,
+       "up_to": 90.0,
+       "breaker_a": 275.0,
+       "connection": [
+        null,
+        150.0,
+        150.0
+       ],
+       "entry": [
+        150.0,
+        150.0
+       ],
+       "earth": 95.0,
+       "measurement": "indirect",
+       "junction_box": "type 3"
+      },
+      {
+       "name": "C9",
+       "over": 91.0,
+       "up_to": 100.0,
+       "breaker_a": 300.0,
+       "connection": [
+        null,
+        185.0,
+        185.0
+       ],
+       "entry": [
+        185.0,
+        185.0
+       ],
+       "earth": 95.0,
+       "measurement": "indirect",
+       "junction_box": "type 3"
+      }
+     ]
+    },
+    "aerial_delta": {
+     "annex": "B",
+     "source": "GRI-0017 v02, Anexo B: aerial network, 120/240 V delta with a neutral (Enel São Paulo), by the breaker",
+     "rows": [
+      {
+       "names": [
+        "A1"
+       ],
+       "breaker_a": 50.0,
+       "connection": [
+        1,
+        10.0,
+        10.0
+       ],
+       "entry": 10.0,
+       "earth": 10.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "B3"
+       ],
+       "breaker_a": 50.0,
+       "connection": [
+        2,
+        10.0,
+        10.0
+       ],
+       "entry": 10.0,
+       "earth": 10.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "C3"
+       ],
+       "breaker_a": 50.0,
+       "connection": [
+        3,
+        10.0,
+        10.0
+       ],
+       "entry": 10.0,
+       "earth": 10.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "A2"
+       ],
+       "breaker_a": 63.0,
+       "connection": [
+        1,
+        16.0,
+        10.0
+       ],
+       "entry": 16.0,
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "B4"
+       ],
+       "breaker_a": 63.0,
+       "connection": [
+        2,
+        16.0,
+        16.0
+       ],
+       "entry": 16.0,
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "C4"
+       ],
+       "breaker_a": 63.0,
+       "connection": [
+        3,
+        16.0,
+        16.0
+       ],
+       "entry": 16.0,
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "B5"
+       ],
+       "breaker_a": 80.0,
+       "connection": [
+        2,
+        25.0,
+        25.0
+       ],
+       "entry": 25.0,
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "C5"
+       ],
+       "breaker_a": 80.0,
+       "connection": [
+        3,
+        25.0,
+        25.0
+       ],
+       "entry": 25.0,
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "B6",
+        "C6"
+       ],
+       "breaker_a": 100.0,
+       "connection": [
+        3,
+        35.0,
+        54.6
+       ],
+       "entry": 35.0,
+       "earth": 16.0,
+       "measurement": "direct"
+      },
+      {
+       "names": [
+        "B7",
+        "C7"
+       ],
+       "breaker_a": 125.0,
+       "connection": [
+        3,
+        35.0,
+        54.6
+       ],
+       "entry": 50.0,
+       "earth": 25.0,
+       "measurement": "indirect"
+      },
+      {
+       "names": [
+        "B8",
+        "C8"
+       ],
+       "breaker_a": 160.0,
+       "connection": [
+        3,
+        50.0,
+        54.6
+       ],
+       "entry": 70.0,
+       "earth": 35.0,
+       "measurement": "indirect"
+      },
+      {
+       "names": [
+        "B9",
+        "C9"
+       ],
+       "breaker_a": 200.0,
+       "connection": [
+        3,
+        95.0,
+        54.6
+       ],
+       "entry": 95.0,
+       "earth": 50.0,
+       "measurement": "indirect"
+      },
+      {
+       "names": [
+        "B10",
+        "C10"
+       ],
+       "breaker_a": 225.0,
+       "connection": [
+        3,
+        95.0,
+        54.6
+       ],
+       "entry": 120.0,
+       "earth": 70.0,
+       "measurement": "indirect"
+      },
+      {
+       "names": [
+        "B11",
+        "C11"
+       ],
+       "breaker_a": 275.0,
+       "connection": [
+        3,
+        150.0,
+        80.0
+       ],
+       "entry": 150.0,
+       "earth": 95.0,
+       "measurement": "indirect"
+      },
+      {
+       "names": [
+        "B12",
+        "C12"
+       ],
+       "breaker_a": 300.0,
+       "connection": [
+        3,
+        150.0,
+        80.0
+       ],
+       "entry": 185.0,
+       "earth": 95.0,
+       "measurement": "indirect"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "sources": {
+  "service": {
+   "doc": "gri0017"
+  }
+ }
+}

@@ -300,6 +300,14 @@ pub fn sections() -> &'static [SectionDef] {
             ),
             s(
                 Electrical,
+                "service",
+                ui_msg!("Utility Service Tables"),
+                ui_msg!("The tables of the utilities whose methods BIMCraft works out: an installation's demand and its category (CPFL), and the category by installed load (Enel, Celesc)."),
+                &["demand"],
+                check_as::<crate::demand::ServiceRules>,
+            ),
+            s(
+                Electrical,
                 "lighting",
                 ui_msg!("Lighting Levels"),
                 ui_msg!("Maintained illuminance by room or task, and emergency lighting."),

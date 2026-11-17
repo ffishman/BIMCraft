@@ -6865,8 +6865,8 @@ fn vent_size(s: &mut Session, p: &Value) -> R {
 
 /// `demand` for Enel: GRI-0017 leaves the demand to the designer (Anexo A, note 11), so it frames the supply by the installed load,
 /// in its Anexos A, C, D and E (B by the demand current), and carries the designer's demand if one is given.
-fn demand_enel(p: &Value, utility: &str, source: &str) -> R {
-    use crate::demand::{self as d, NETWORKS, Network};
+fn demand_enel(t: &crate::demand::Gri0017, p: &Value, utility: &str, source: &str) -> R {
+    use crate::demand::{NETWORKS, Network};
     let c = "demand";
     const KEYS: &[&str] = &["utility", "network", "installed_kw", "demand_current_a", "phases", "demand_kva"];
     if let Some(k) = p.as_object().and_then(|o| o.keys().find(|k| !KEYS.contains(&k.as_str()))) {
@@ -6898,7 +6898,7 @@ fn demand_enel(p: &Value, utility: &str, source: &str) -> R {
             return Err(bad(c, "`demand_current_a` (the designer's demand current, A) is required for `aerial_delta`"));
         }
         let amps = within(c, p, "demand_current_a", 0.0, 0.0, 1.0e6)?;
-        let rows = d::delta_pick(amps, phases);
+        let rows = t.delta_pick(amps, phases);
         let (category, note) = match &rows {
             Some(rows) => {
                 let r = rows[0];
@@ -6915,7 +6915,7 @@ fn demand_enel(p: &Value, utility: &str, source: &str) -> R {
             }
             None => (Value::Null, json!("above the last breaker of Anexo B: 300 A")),
         };
-        let candidates: Vec<&str> = rows.iter().flatten().flat_map(|r| r.names.iter().copied()).collect();
+        let candidates: Vec<&str> = rows.iter().flatten().flat_map(|r| r.names.iter().map(String::as_str)).collect();
         return Ok(json!({
             "utility": utility,
             "source": source,
@@ -6940,7 +6940,7 @@ fn demand_enel(p: &Value, utility: &str, source: &str) -> R {
         return Err(bad(c, "`installed_kw` (the installed load in kW) is required"));
     }
     let kw = within(c, p, "installed_kw", 0.0, 0.0, 1.0e6)?;
-    let pick = d::enel_pick(network, kw, phases);
+    let pick = t.pick(network, kw, phases);
     let (category, candidates, note) = match &pick {
         Some(k) => {
             let r = k.rows[0];
@@ -6954,7 +6954,7 @@ fn demand_enel(p: &Value, utility: &str, source: &str) -> R {
                 "measurement": r.measurement,
                 "junction_box": r.junction_box,
             });
-            (cat, json!(k.rows.iter().map(|r| r.name).collect::<Vec<_>>()), Value::Null)
+            (cat, json!(k.rows.iter().map(|r| r.name.as_str()).collect::<Vec<_>>()), Value::Null)
         }
         None if kw > 75.0 && network != Network::Submersible => (
             Value::Null,
@@ -6993,8 +6993,8 @@ fn demand_enel(p: &Value, utility: &str, source: &str) -> R {
 
 /// `demand` for Celesc: N-321.0001 classes a unit by its installed load (items 5.3.2.1 to 5.3.2.4, Tabela 01) and leaves a demand to
 /// the designer where a three-phase unit needs one (Tabela 01, note 1), so it frames the supply and carries the designer's demand.
-fn demand_celesc(p: &Value, utility: &str, source: &str) -> R {
-    use crate::demand::{self as d, CELESC_NETWORKS};
+fn demand_celesc(t: &crate::demand::Rows<crate::demand::CelescRow>, p: &Value, utility: &str, source: &str) -> R {
+    use crate::demand::CELESC_NETWORKS;
     let c = "demand";
     const KEYS: &[&str] = &["utility", "network", "installed_kw", "phases", "demand_kva"];
     if let Some(k) = p.as_object().and_then(|o| o.keys().find(|k| !KEYS.contains(&k.as_str()))) {
@@ -7019,7 +7019,7 @@ fn demand_celesc(p: &Value, utility: &str, source: &str) -> R {
         None => None,
         Some(_) => Some(within(c, p, "demand_kva", 0.0, 0.0, 1.0e6)?),
     };
-    let row = d::celesc_pick(network, kw, phases);
+    let row = t.pick(network, kw, phases);
     let (category, note) = match row {
         Some(r) => {
             let cat = json!({
@@ -7282,8 +7282,18 @@ fn demand_table(p: &Value, name: &str, u: &crate::entrance::Utility, member: Opt
     }))
 }
 
+/// Whether section `h` holds code `code`'s own part (CPFL's, Enel's, Celesc's).
+fn service_is(h: &crate::demand::ServiceRules, code: &str) -> bool {
+    match code {
+        "cpfl" => h.installation.is_some(),
+        "enel" => h.annexes.is_some(),
+        "celesc" => h.categories.is_some(),
+        _ => false,
+    }
+}
+
 fn demand(s: &mut Session, p: &Value) -> R {
-    use crate::demand::{self as d, Air, Load, Motor, OtherUse, SPECIAL_KINDS, Special, SpecialKind, System, USES};
+    use crate::demand::{self as d, Air, Load, Motor, OtherUse, SPECIAL_KINDS, Special, SpecialKind, System};
     let c = "demand";
     if !p.is_object() {
         return Err(bad(c, "params must be an object"));
@@ -7339,13 +7349,26 @@ fn demand(s: &mut Session, p: &Value) -> R {
             ),
         ));
     };
+    // Each of these utilities' tables is a part of `service` only its code has: the project's, where its code is that utility's
+    // and it changed it; else BIMCraft's.
+    let code = utility.to_ascii_lowercase();
+    let held = s
+        .model
+        .section_as::<d::ServiceRules>(crate::codes::Discipline::Electrical, "service")
+        .filter(|(h, own)| *own && service_is(h, &code))
+        .map(|(h, _)| h)
+        .or_else(|| d::service(&code).cloned())
+        .unwrap_or_default();
     let residential = choice(c, p, "building", &["residential", "other"], "residential")? == "residential";
     if utility == "ENEL" {
-        return demand_enel(p, &utility, source);
+        let t = held.annexes.as_ref().ok_or_else(|| bad(c, "GRI-0017's annexes did not read"))?;
+        return demand_enel(t, p, &utility, source);
     }
     if utility == "CELESC" {
-        return demand_celesc(p, &utility, source);
+        let t = held.categories.as_ref().ok_or_else(|| bad(c, "Tabela 01 of N-321.0001 did not read"))?;
+        return demand_celesc(t, p, &utility, source);
     }
+    let t13 = held.installation.as_ref().ok_or_else(|| bad(c, "GED 13's tables did not read"))?;
     if let Some(k) =
         ["network", "installed_kw", "demand_current_a", "phases", "demand_kva", "entrance"].iter().find(|k| p.get(**k).is_some())
     {
@@ -7418,9 +7441,10 @@ fn demand(s: &mut Session, p: &Value) -> R {
             if let Some(k) = o.keys().find(|k| !["use", "kw", "pf"].contains(&k.as_str())) {
                 return Err(bad(c, format!("`lighting_outlets`: unknown parameter `{k}`")));
             }
-            let kind = choice(c, v, "use", USES, "")?;
+            let uses = t13.uses();
+            let kind = choice(c, v, "use", &uses, "")?;
             if kind.is_empty() {
-                return Err(bad(c, format!("`lighting_outlets`: `use` is one of {}", USES.join(", "))));
+                return Err(bad(c, format!("`lighting_outlets`: `use` is one of {}", uses.join(", "))));
             }
             let kw = within(c, v, "kw", f64::NAN, 0.0, 1.0e6)?;
             if kw.is_nan() {
@@ -7438,7 +7462,7 @@ fn demand(s: &mut Session, p: &Value) -> R {
         let n = count(&v, "count", 100_000.0)?;
         if o.get("btu").is_some_and(|x| !x.is_null()) {
             let btu = within(c, &v, "btu", 0.0, 0.0, 1.0e6)?;
-            let (va, w) = d::window_air(btu).ok_or_else(|| {
+            let (va, w) = t13.window_air(btu).ok_or_else(|| {
                 bad(
                     c,
                     format!("`btu` {btu} is not in Tabela 8: 7100, 8500, 10000, 12000, 14000, 18000, 21000 or 30000; or give `va` and `w`"),
@@ -7466,7 +7490,7 @@ fn demand(s: &mut Session, p: &Value) -> R {
                 Some(x @ (1 | 3)) => x as u32,
                 _ => return Err(bad(c, "`motors`: `phases` is 1 or 3 with `cv`")),
             };
-            let (kva, kw) = d::motor(cv, phases).ok_or_else(|| {
+            let (kva, kw) = t13.motor(cv, phases).ok_or_else(|| {
                 bad(c, format!("no {cv} cv {}-phase motor in Tabela {}; give `kva` and `kw`", phases, if phases == 1 { 14 } else { 15 }))
             })?;
             motors.push(Motor { kva, kw, count: n });
@@ -7508,9 +7532,9 @@ fn demand(s: &mut Session, p: &Value) -> R {
         hydro: loads("hydromassage", "w")?,
         commercial_air: choice(c, p, "air_use", &["residential", "commercial"], "residential")? == "commercial",
     };
-    let o = d::compute(&input).map_err(|e| bad(c, e))?;
+    let o = t13.compute(&input).map_err(|e| bad(c, e))?;
     let r6 = |x: f64| (x * 1.0e6).round() / 1.0e6 + 0.0;
-    let cat = d::category(system, o.installed_kw, o.demand_kva);
+    let cat = t13.category(system, o.installed_kw, o.demand_kva);
     let (category, note) = match cat {
         Some(k) => (
             json!({"name": k.name, "breaker_a": k.breaker, "cable_mm2": k.cable, "aluminium_mm2": k.aluminium, "conduit_mm": k.conduit, "earthing_mm2": k.earth, "phases": k.phases}),

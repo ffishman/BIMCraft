@@ -1,7 +1,7 @@
 //! The categories of a low-voltage supply, as data: what a utility's table gives a unit for its installed load or its demand (the
 //! breaker, the branches, the earthing, the measurement). Each utility's are the `entrance` section of its building code, an amendment over
 //! NBR 5410 (`data/codes/electrical/`); the `demand` command is the only caller, for the project's utility as it changed it, or
-//! one named. `demand.rs` keeps the utilities whose tables came before (CPFL, ENEL, CELESC), still in Rust.
+//! one named. CPFL's, Enel's and Celesc's tables, whose methods `demand.rs` works, are their codes' `service` section.
 //!
 //! The utilities' tables agree on a shape, which is what lets them be data:
 //!

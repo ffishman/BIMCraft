@@ -3178,7 +3178,7 @@ msgstr ""
 msgid "Code:"
 msgstr "代碼："
 
-#: crates/core/src/codes.rs:352
+#: crates/core/src/codes.rs:360
 msgid "Cold Water"
 msgstr ""
 
@@ -4000,7 +4000,7 @@ msgstr "數據插座"
 msgid "Datum"
 msgstr "基準"
 
-#: crates/core/src/codes.rs:363
+#: crates/core/src/codes.rs:371
 msgid "Days of water stored, refill time, compartments and pumps."
 msgstr ""
 
@@ -4206,7 +4206,7 @@ msgstr "已拆除"
 msgid "Demolition"
 msgstr "拆除"
 
-#: crates/core/src/commands.rs:13812
+#: crates/core/src/commands.rs:13836
 msgid "Dependent"
 msgstr "相關"
 
@@ -4243,7 +4243,7 @@ msgstr ""
 msgid "Description of {}"
 msgstr ""
 
-#: crates/core/src/codes.rs:336
+#: crates/core/src/codes.rs:344
 msgid "Design Conditions"
 msgstr ""
 
@@ -4758,7 +4758,7 @@ msgstr "繪製中…"
 msgid "Duct"
 msgstr "風管"
 
-#: crates/core/src/codes.rs:328
+#: crates/core/src/codes.rs:336
 msgid "Ducts and Piping"
 msgstr ""
 
@@ -4815,7 +4815,7 @@ msgstr "EQ"
 msgid "Each face of the box shows what it cuts in its cut pattern. Off, the faces are left hollow and moving the box is faster"
 msgstr ""
 
-#: crates/core/src/codes.rs:345
+#: crates/core/src/codes.rs:353
 msgid "Each fixture's design flows, weight, fixture units and minimum drain."
 msgstr ""
 
@@ -5285,7 +5285,7 @@ msgstr "相等顯示"
 msgid "Equality Text"
 msgstr "相等文字"
 
-#: crates/core/src/codes.rs:312
+#: crates/core/src/codes.rs:320
 msgid "Equipment Working Space"
 msgstr ""
 
@@ -5842,7 +5842,7 @@ msgstr ""
 msgid "Fire Safety"
 msgstr ""
 
-#: crates/core/src/codes.rs:387
+#: crates/core/src/codes.rs:395
 msgid "Fire hydrant systems by type, the fire water reserve, pipe roughness, and the limits on speed and pressure."
 msgstr ""
 
@@ -5875,7 +5875,7 @@ msgstr "固定窗"
 msgid "Fixed to Dimension Line"
 msgstr "固定到尺寸線"
 
-#: crates/core/src/codes.rs:344
+#: crates/core/src/codes.rs:352
 msgid "Fixtures"
 msgstr ""
 
@@ -6610,7 +6610,7 @@ msgstr "它如何顯示視圖階段中已有的內容："
 msgid "How many bars, how thick and how far apart is yours to say; a field left empty is not used. A spacing is the most between bars."
 msgstr "根數、直徑和間距由您決定；留空的項不使用。間距為鋼筋之間的最大值。"
 
-#: crates/core/src/codes.rs:371
+#: crates/core/src/codes.rs:379
 msgid "How many fixture units branches, stacks and building drains can carry by size and slope, and vents and trap distances."
 msgstr ""
 
@@ -6678,7 +6678,7 @@ msgstr ""
 msgid "How wide this flight or landing is; empty for as wide as the stair"
 msgstr ""
 
-#: crates/core/src/codes.rs:386
+#: crates/core/src/codes.rs:394
 msgid "Hydrants and Hose Reels"
 msgstr ""
 
@@ -6875,7 +6875,7 @@ msgstr ""
 msgid "Indicator as Prefix / Suffix"
 msgstr ""
 
-#: crates/core/src/codes.rs:337
+#: crates/core/src/codes.rs:345
 msgid "Indoor temperatures and humidity for heating and cooling."
 msgstr ""
 
@@ -7527,7 +7527,7 @@ msgstr "照明設備"
 msgid "Lighting Fixture (LF): a luminaire, where you click, hung from the slab; Space turns it"
 msgstr "照明設備 (LF)：在單擊處放置吊掛於樓板的燈具；按空格鍵旋轉"
 
-#: crates/core/src/codes.rs:304
+#: crates/core/src/codes.rs:312
 msgid "Lighting Levels"
 msgstr ""
 
@@ -8001,7 +8001,7 @@ msgstr "主間距 Y"
 msgid "Mains"
 msgstr ""
 
-#: crates/core/src/codes.rs:305
+#: crates/core/src/codes.rs:313
 msgid "Maintained illuminance by room or task, and emergency lighting."
 msgstr ""
 
@@ -8358,7 +8358,7 @@ msgstr "最小值"
 msgid "Minimum Angle"
 msgstr "最小角度"
 
-#: crates/core/src/codes.rs:394
+#: crates/core/src/codes.rs:402
 msgid "Minimum Fixtures by Use"
 msgstr ""
 
@@ -9691,7 +9691,7 @@ msgstr ""
 msgid "Out"
 msgstr "外"
 
-#: crates/core/src/codes.rs:321
+#: crates/core/src/codes.rs:329
 msgid "Outdoor air by use, per person and per area, default occupancies and exhaust rates."
 msgstr ""
 
@@ -11108,7 +11108,7 @@ msgid "Properties over the Project Browser, on the left, as at first"
 msgstr "“屬性”在“項目瀏覽器”之上、位於左側，與最初一樣"
 
 #: crates/core/src/commands.rs:618
-#: crates/core/src/commands.rs:9286
+#: crates/core/src/commands.rs:9310
 msgid "Property Line"
 msgstr ""
 
@@ -11247,7 +11247,7 @@ msgstr "欄杆扶手"
 msgid "Rainfall intensity"
 msgstr ""
 
-#: crates/core/src/codes.rs:379
+#: crates/core/src/codes.rs:387
 msgid "Rainfall, slopes, roughness, the minimum downpipe and the downpipe charts."
 msgstr ""
 
@@ -11687,7 +11687,7 @@ msgstr ""
 msgid "Reporting Parameter"
 msgstr "報告參數"
 
-#: crates/core/src/codes.rs:362
+#: crates/core/src/codes.rs:370
 msgid "Reservation"
 msgstr ""
 
@@ -12145,7 +12145,7 @@ msgstr "示例項目"
 msgid "Sand"
 msgstr "沙"
 
-#: crates/core/src/codes.rs:370
+#: crates/core/src/codes.rs:378
 msgid "Sanitary Drainage and Vents"
 msgstr ""
 
@@ -13487,7 +13487,7 @@ msgstr "箍筋"
 msgid "Stop"
 msgstr ""
 
-#: crates/core/src/codes.rs:378
+#: crates/core/src/codes.rs:386
 msgid "Storm Drainage"
 msgstr ""
 
@@ -14157,7 +14157,7 @@ msgstr ""
 msgid "The centre of a curved wall, a column or a component"
 msgstr "弧形牆、柱或構件的中心"
 
-#: crates/core/src/codes.rs:313
+#: crates/core/src/codes.rs:321
 msgid "The clear space in front of panels and switchboards."
 msgstr ""
 
@@ -14234,7 +14234,7 @@ msgstr "該訊息附帶的檔案不是助手接受的類型"
 msgid "The first guest hosts the session; the others move there"
 msgstr "第一位訪客主持工作階段；其他人轉到那裡"
 
-#: crates/core/src/codes.rs:354
+#: crates/core/src/codes.rs:362
 msgid "The flow method, the maximum speed, the minimum pressure at a fixture, and the equivalent lengths of pipes and fittings."
 msgstr ""
 
@@ -14286,7 +14286,7 @@ msgstr "表面相交處的線"
 msgid "The loop is open: {} line ends don't meet another line."
 msgstr "環未閉合：有 {} 個線端沒有與其他線相接。"
 
-#: crates/core/src/codes.rs:329
+#: crates/core/src/codes.rs:337
 msgid "The maximum air and water speeds, and friction losses."
 msgstr ""
 
@@ -14532,6 +14532,10 @@ msgstr ""
 #: crates/ui-egui/src/settings.rs:642
 msgid "The system's own title bar and frame, rather than the window's: the app bar then sits under it"
 msgstr "使用系統自帶的標題欄和邊框，而非視窗自己的：應用欄隨之位於其下方"
+
+#: crates/core/src/codes.rs:305
+msgid "The tables of the utilities whose methods BIMCraft works out: an installation's demand and its category (CPFL), and the category by installed load (Enel, Celesc)."
+msgstr ""
 
 #: crates/ui-egui/src/titleblocks.rs:219
 #: crates/ui-egui/src/titleblocks.rs:498
@@ -14893,7 +14897,7 @@ msgstr ""
 msgid "To change a rule for this project, open Manage > Building Codes."
 msgstr ""
 
-#: crates/core/src/codes.rs:395
+#: crates/core/src/codes.rs:403
 msgid "Toilets, washbasins and other fixtures a building needs for the people in it."
 msgstr ""
 
@@ -15371,7 +15375,7 @@ msgstr ""
 msgid "Unlock alignment"
 msgstr "解鎖對齊"
 
-#: crates/core/src/commands.rs:14048
+#: crates/core/src/commands.rs:14072
 msgid "Unnamed"
 msgstr "未命名"
 
@@ -15484,6 +15488,10 @@ msgstr "用戶界面"
 msgid "Using the key in {}"
 msgstr ""
 
+#: crates/core/src/codes.rs:304
+msgid "Utility Service Tables"
+msgstr ""
+
 #: crates/ui-egui/src/templates.rs:698
 msgid "V/G Filters"
 msgstr "可見性/圖形過濾器"
@@ -15521,7 +15529,7 @@ msgstr "可變"
 msgid "Vector"
 msgstr ""
 
-#: crates/core/src/codes.rs:320
+#: crates/core/src/codes.rs:328
 msgid "Ventilation"
 msgstr ""
 

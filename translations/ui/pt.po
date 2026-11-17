@@ -3178,7 +3178,7 @@ msgstr "Seções do Código"
 msgid "Code:"
 msgstr "Código:"
 
-#: crates/core/src/codes.rs:352
+#: crates/core/src/codes.rs:360
 msgid "Cold Water"
 msgstr "Água Fria"
 
@@ -4000,7 +4000,7 @@ msgstr "Pontos de dados"
 msgid "Datum"
 msgstr "Referência"
 
-#: crates/core/src/codes.rs:363
+#: crates/core/src/codes.rs:371
 msgid "Days of water stored, refill time, compartments and pumps."
 msgstr "Dias de consumo reservados, tempo de reabastecimento, compartimentos e bombas."
 
@@ -4206,7 +4206,7 @@ msgstr "Demolido"
 msgid "Demolition"
 msgstr "Demolição"
 
-#: crates/core/src/commands.rs:13812
+#: crates/core/src/commands.rs:13836
 msgid "Dependent"
 msgstr "Dependente"
 
@@ -4243,7 +4243,7 @@ msgstr "Descrição"
 msgid "Description of {}"
 msgstr "Descrição de {}"
 
-#: crates/core/src/codes.rs:336
+#: crates/core/src/codes.rs:344
 msgid "Design Conditions"
 msgstr "Condições de Projeto"
 
@@ -4758,7 +4758,7 @@ msgstr "Desenhando…"
 msgid "Duct"
 msgstr "Duto"
 
-#: crates/core/src/codes.rs:328
+#: crates/core/src/codes.rs:336
 msgid "Ducts and Piping"
 msgstr "Dutos e Tubulações"
 
@@ -4815,7 +4815,7 @@ msgstr "EQ"
 msgid "Each face of the box shows what it cuts in its cut pattern. Off, the faces are left hollow and moving the box is faster"
 msgstr ""
 
-#: crates/core/src/codes.rs:345
+#: crates/core/src/codes.rs:353
 msgid "Each fixture's design flows, weight, fixture units and minimum drain."
 msgstr "As vazões de projeto, o peso, as unidades de contribuição e o ramal mínimo de cada aparelho."
 
@@ -5285,7 +5285,7 @@ msgstr "Exibição de igualdade"
 msgid "Equality Text"
 msgstr "Texto de igualdade"
 
-#: crates/core/src/codes.rs:312
+#: crates/core/src/codes.rs:320
 msgid "Equipment Working Space"
 msgstr "Espaço de Trabalho dos Equipamentos"
 
@@ -5842,7 +5842,7 @@ msgstr ""
 msgid "Fire Safety"
 msgstr "Segurança contra Incêndio"
 
-#: crates/core/src/codes.rs:387
+#: crates/core/src/codes.rs:395
 msgid "Fire hydrant systems by type, the fire water reserve, pipe roughness, and the limits on speed and pressure."
 msgstr "Sistemas de hidrantes por tipo, a reserva de incêndio, a rugosidade dos tubos e os limites de velocidade e pressão."
 
@@ -5875,7 +5875,7 @@ msgstr "Janela fixa"
 msgid "Fixed to Dimension Line"
 msgstr "Fixa à linha de cota"
 
-#: crates/core/src/codes.rs:344
+#: crates/core/src/codes.rs:352
 msgid "Fixtures"
 msgstr "Aparelhos"
 
@@ -6610,7 +6610,7 @@ msgstr "Como mostra o que há, na fase da vista:"
 msgid "How many bars, how thick and how far apart is yours to say; a field left empty is not used. A spacing is the most between bars."
 msgstr "Quantas barras, de que diâmetro e a que distância é você quem diz; um campo vazio não é usado. Um espaçamento é o máximo entre barras."
 
-#: crates/core/src/codes.rs:371
+#: crates/core/src/codes.rs:379
 msgid "How many fixture units branches, stacks and building drains can carry by size and slope, and vents and trap distances."
 msgstr "As unidades de contribuição que ramais, tubos de queda e coletores conduzem por diâmetro e declividade, ventilação e distâncias dos desconectores."
 
@@ -6678,7 +6678,7 @@ msgstr ""
 msgid "How wide this flight or landing is; empty for as wide as the stair"
 msgstr ""
 
-#: crates/core/src/codes.rs:386
+#: crates/core/src/codes.rs:394
 msgid "Hydrants and Hose Reels"
 msgstr "Hidrantes e Mangotinhos"
 
@@ -6875,7 +6875,7 @@ msgstr "Incluir Elevação"
 msgid "Indicator as Prefix / Suffix"
 msgstr "Indicador como Prefixo / Sufixo"
 
-#: crates/core/src/codes.rs:337
+#: crates/core/src/codes.rs:345
 msgid "Indoor temperatures and humidity for heating and cooling."
 msgstr "Temperaturas e umidade internas para aquecimento e resfriamento."
 
@@ -7527,7 +7527,7 @@ msgstr "Luminária"
 msgid "Lighting Fixture (LF): a luminaire, where you click, hung from the slab; Space turns it"
 msgstr "Luminária (LF): uma luminária, onde você clicar, presa à laje; Espaço gira"
 
-#: crates/core/src/codes.rs:304
+#: crates/core/src/codes.rs:312
 msgid "Lighting Levels"
 msgstr "Níveis de Iluminação"
 
@@ -8001,7 +8001,7 @@ msgstr "Espaçamento principal Y"
 msgid "Mains"
 msgstr "Disjuntor geral"
 
-#: crates/core/src/codes.rs:305
+#: crates/core/src/codes.rs:313
 msgid "Maintained illuminance by room or task, and emergency lighting."
 msgstr "Iluminância mantida por ambiente ou tarefa, e iluminação de emergência."
 
@@ -8358,7 +8358,7 @@ msgstr "Mínimo"
 msgid "Minimum Angle"
 msgstr "Ângulo mínimo"
 
-#: crates/core/src/codes.rs:394
+#: crates/core/src/codes.rs:402
 msgid "Minimum Fixtures by Use"
 msgstr "Aparelhos Mínimos por Uso"
 
@@ -9691,7 +9691,7 @@ msgstr ""
 msgid "Out"
 msgstr "Para fora"
 
-#: crates/core/src/codes.rs:321
+#: crates/core/src/codes.rs:329
 msgid "Outdoor air by use, per person and per area, default occupancies and exhaust rates."
 msgstr "Ar externo por uso, por pessoa e por área, ocupações padrão e vazões de exaustão."
 
@@ -11108,7 +11108,7 @@ msgid "Properties over the Project Browser, on the left, as at first"
 msgstr "Propriedades sobre o Navegador de projeto, à esquerda, como no início"
 
 #: crates/core/src/commands.rs:618
-#: crates/core/src/commands.rs:9286
+#: crates/core/src/commands.rs:9310
 msgid "Property Line"
 msgstr ""
 
@@ -11247,7 +11247,7 @@ msgstr "Guarda-corpos"
 msgid "Rainfall intensity"
 msgstr "Intensidade pluviométrica"
 
-#: crates/core/src/codes.rs:379
+#: crates/core/src/codes.rs:387
 msgid "Rainfall, slopes, roughness, the minimum downpipe and the downpipe charts."
 msgstr "Chuva, declividades, rugosidade, o condutor vertical mínimo e os ábacos dos condutores verticais."
 
@@ -11687,7 +11687,7 @@ msgstr ""
 msgid "Reporting Parameter"
 msgstr "Parâmetro de relatório"
 
-#: crates/core/src/codes.rs:362
+#: crates/core/src/codes.rs:370
 msgid "Reservation"
 msgstr "Reservação"
 
@@ -12145,7 +12145,7 @@ msgstr "Projeto de exemplo"
 msgid "Sand"
 msgstr "Areia"
 
-#: crates/core/src/codes.rs:370
+#: crates/core/src/codes.rs:378
 msgid "Sanitary Drainage and Vents"
 msgstr "Esgoto Sanitário e Ventilação"
 
@@ -13487,7 +13487,7 @@ msgstr "Estribos"
 msgid "Stop"
 msgstr "Parar"
 
-#: crates/core/src/codes.rs:378
+#: crates/core/src/codes.rs:386
 msgid "Storm Drainage"
 msgstr "Águas Pluviais"
 
@@ -14157,7 +14157,7 @@ msgstr "O edifício fica onde está no mundo: os números de cada local são rec
 msgid "The centre of a curved wall, a column or a component"
 msgstr "O centro de uma parede curva, de um pilar ou de um componente"
 
-#: crates/core/src/codes.rs:313
+#: crates/core/src/codes.rs:321
 msgid "The clear space in front of panels and switchboards."
 msgstr "O espaço livre diante de quadros e painéis."
 
@@ -14234,7 +14234,7 @@ msgstr "Os arquivos dessa mensagem não são de um tipo que o assistente aceita"
 msgid "The first guest hosts the session; the others move there"
 msgstr "O primeiro convidado hospeda a sessão; os outros se mudam para lá"
 
-#: crates/core/src/codes.rs:354
+#: crates/core/src/codes.rs:362
 msgid "The flow method, the maximum speed, the minimum pressure at a fixture, and the equivalent lengths of pipes and fittings."
 msgstr "O método de vazão, a velocidade máxima, a pressão mínima num ponto de utilização, os tubos e os comprimentos equivalentes das conexões."
 
@@ -14286,7 +14286,7 @@ msgstr "As linhas onde as superfícies se encontram"
 msgid "The loop is open: {} line ends don't meet another line."
 msgstr "O contorno está aberto: {} pontas de linha não encontram outra linha."
 
-#: crates/core/src/codes.rs:329
+#: crates/core/src/codes.rs:337
 msgid "The maximum air and water speeds, and friction losses."
 msgstr "As velocidades máximas do ar e da água e as perdas de carga."
 
@@ -14532,6 +14532,10 @@ msgstr ""
 #: crates/ui-egui/src/settings.rs:642
 msgid "The system's own title bar and frame, rather than the window's: the app bar then sits under it"
 msgstr "A barra de título e a moldura do próprio sistema, em vez das da janela: a barra do aplicativo fica então abaixo dela"
+
+#: crates/core/src/codes.rs:305
+msgid "The tables of the utilities whose methods BIMCraft works out: an installation's demand and its category (CPFL), and the category by installed load (Enel, Celesc)."
+msgstr "As tabelas das distribuidoras cujos métodos o BIMCraft calcula: a demanda de uma instalação e sua categoria (CPFL), e a categoria pela carga instalada (Enel, Celesc)."
 
 #: crates/ui-egui/src/titleblocks.rs:219
 #: crates/ui-egui/src/titleblocks.rs:498
@@ -14893,7 +14897,7 @@ msgstr "A criar"
 msgid "To change a rule for this project, open Manage > Building Codes."
 msgstr "Para alterar uma regra neste projeto, abra Gerenciar > Códigos de Obra."
 
-#: crates/core/src/codes.rs:395
+#: crates/core/src/codes.rs:403
 msgid "Toilets, washbasins and other fixtures a building needs for the people in it."
 msgstr "Bacias sanitárias, lavatórios e outros aparelhos de que um edifício precisa para seus ocupantes."
 
@@ -15371,7 +15375,7 @@ msgstr "Desbloquear"
 msgid "Unlock alignment"
 msgstr "Desbloquear alinhamento"
 
-#: crates/core/src/commands.rs:14048
+#: crates/core/src/commands.rs:14072
 msgid "Unnamed"
 msgstr "Sem nome"
 
@@ -15484,6 +15488,10 @@ msgstr "Interface do usuário"
 msgid "Using the key in {}"
 msgstr "Usando a chave de {}"
 
+#: crates/core/src/codes.rs:304
+msgid "Utility Service Tables"
+msgstr "Tabelas de fornecimento das distribuidoras"
+
 #: crates/ui-egui/src/templates.rs:698
 msgid "V/G Filters"
 msgstr "Filtros de V/G"
@@ -15521,7 +15529,7 @@ msgstr "Variável"
 msgid "Vector"
 msgstr ""
 
-#: crates/core/src/codes.rs:320
+#: crates/core/src/codes.rs:328
 msgid "Ventilation"
 msgstr "Ventilação"
 
