@@ -10,7 +10,12 @@ Built on `feat/building-code` at 68090934. Closes E9's last entry of `MOVING`: t
 - `demand.rs` keeps only the methods and reads the section: the project's where its amendment is that utility's, else the
   library's. It leaves `MOVING` and joins `READERS`.
 - `service` has a `check`: numbers finite and not below zero, power factors over 0 and at most 1, a demand factor at most 1 with
-  its loads in order (a row with no load only last), breakers over 0 A.
+  its loads in order (a row with no load only last), breakers over 0 A; and a table a row can be picked from as printed: Tabela
+  15's last band open, ranges that run up, 1 to 3 phases, conductors with a section, a neutral besides the phases.
+- `demand` says `changed_by_project` for CPFL, Enel and Celesc where the project's tables are not the code's as printed.
+- One line in your `codes/xml.rs`: `known()` took a section's rules from the first library code that holds it (Celesc's
+  `service`), so an import lost CPFL's `installation` and Enel's `annexes`. It now takes them from every code that holds the
+  section. Any section whose parts differ by code needs this, so you may prefer it in the engine on its own.
 
 ## How it was checked
 
@@ -20,7 +25,9 @@ Built on `feat/building-code` at 68090934. Closes E9's last entry of `MOVING`: t
 - Each table is pinned by a digest: a changed number or a lost row fails, and the test says to check the table against its
   document before updating it.
 - The GED's Example 3 and the existing `demand` tests pass unchanged. A project's copy of CPFL's Tabela 4 lowers Example 3's
-  demand; a changed Celesc or Enel row shows in the category; a change to Celesc's table never reaches CPFL's or Enel's answer.
+  demand; a changed Celesc or Enel row shows in the category; a change to Celesc's table never reaches CPFL's or Enel's answer;
+  CPFL's and Enel's changes go out as XML and come back; each kind of table no row can be picked from is refused, and the
+  library's tables as printed are not.
 
 ## Open points
 
