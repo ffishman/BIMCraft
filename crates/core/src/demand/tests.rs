@@ -794,3 +794,74 @@ fn a_band_with_no_load_is_the_last_one() {
     *first(&mut t).unwrap() = json!([[null, 0.1], [20, 1]]);
     assert!(hold(&mut s, "cpfl", "service", "installation", t).is_err());
 }
+
+#[test]
+fn cpfl_s_and_enel_s_tables_changed_by_the_project_go_out_as_xml_and_come_back() {
+    use serde_json::json;
+    let mut s = crate::engine::Session::new();
+    s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["cpfl", "enel"]})).unwrap();
+    let mut t = ged13().unwrap().clone();
+    t.heaters.beyond = 0.25;
+    hold(&mut s, "cpfl", "service", "installation", json!(t)).unwrap();
+    let mut e = gri0017().unwrap().clone();
+    e.aerial.rows[0].breaker += 1.0;
+    hold(&mut s, "enel", "service", "annexes", json!(e)).unwrap();
+    let dir = std::env::temp_dir().join(format!("bimcraft-service-xml-2-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("cpfl-enel.xml").to_string_lossy().to_string();
+    s.execute("building_code_export", &json!({"discipline": "electrical", "path": path, "name": "Cpfl and Enel as changed"})).unwrap();
+    let mut other = crate::engine::Session::new();
+    let r = other.execute("building_code_import", &json!({"path": path, "set": true})).unwrap();
+    assert_eq!(r["left_out"], json!([]), "installation and annexes are rules the section knows");
+    let held = other.model.section_as::<ServiceRules>(crate::codes::Discipline::Electrical, "service").unwrap().0;
+    assert_eq!(held.installation.map(|t| t.heaters.beyond), Some(0.25), "CPFL's change came back");
+    assert_eq!(held.annexes.map(|a| a.aerial.rows[0].breaker), Some(e.aerial.rows[0].breaker), "Enel's change came back");
+}
+
+#[test]
+fn a_table_a_row_cannot_be_picked_from_is_refused() {
+    use serde_json::json;
+    let mut s = crate::engine::Session::new();
+    s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["cpfl", "enel", "celesc"]})).unwrap();
+    // Tabela 15's last band left with an end, or no band at all: a load past it would be lost.
+    let mut t = ged13().unwrap().clone();
+    t.commercial.uses[0].bands.pop();
+    assert!(hold(&mut s, "cpfl", "service", "installation", json!(t)).is_err());
+    let mut t = ged13().unwrap().clone();
+    t.commercial.uses[0].bands.clear();
+    assert!(hold(&mut s, "cpfl", "service", "installation", json!(t)).is_err());
+    // A category of no phases, or a conductor of no section.
+    let mut t = ged13().unwrap().clone();
+    t.categories.systems.values_mut().next().unwrap()[0].phases = 0;
+    assert!(hold(&mut s, "cpfl", "service", "installation", json!(t)).is_err());
+    let mut e = gri0017().unwrap().clone();
+    e.aerial.rows[0].entry.0 = 0.0;
+    assert!(hold(&mut s, "enel", "service", "annexes", json!(e)).is_err());
+    // A range that runs backwards, no phases, a conductor of no section.
+    for f in [(|r: &mut CelescRow| std::mem::swap(&mut r.lo, &mut r.hi)) as fn(&mut CelescRow), |r| r.phases = 0, |r| r.connection.0 = 0.0]
+    {
+        let mut c = celesc_01().clone();
+        f(&mut c.rows[1]);
+        assert!(hold(&mut s, "celesc", "service", "categories", json!(c)).is_err());
+    }
+    // As printed, every one reads.
+    hold(&mut s, "cpfl", "service", "installation", json!(ged13().unwrap())).unwrap();
+    hold(&mut s, "enel", "service", "annexes", json!(gri0017().unwrap())).unwrap();
+    hold(&mut s, "celesc", "service", "categories", json!(celesc_01())).unwrap();
+}
+
+#[test]
+fn the_answer_says_where_the_project_changed_the_utility_s_tables() {
+    use serde_json::json;
+    let mut s = crate::engine::Session::new();
+    let p = json!({"utility": "CELESC", "installed_kw": 5});
+    assert_eq!(s.execute("demand", &p).unwrap()["changed_by_project"], false);
+    s.execute("building_code", &json!({"discipline": "electrical", "set": "nbr-5410", "amendments": ["celesc"]})).unwrap();
+    assert_eq!(s.execute("demand", &p).unwrap()["changed_by_project"], false, "the amendment as printed");
+    let mut c = celesc_01().clone();
+    c.rows[0].breaker += 1.0;
+    hold(&mut s, "celesc", "service", "categories", json!(c)).unwrap();
+    assert_eq!(s.execute("demand", &p).unwrap()["changed_by_project"], true);
+    let cpfl = json!({"utility": "CPFL", "area": 40, "lighting_points": 4});
+    assert_eq!(s.execute("demand", &cpfl).unwrap()["changed_by_project"], false, "CPFL's are BIMCraft's");
+}

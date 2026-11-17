@@ -37,7 +37,71 @@ impl crate::codes::Section for ServiceRules {
     const DISCIPLINE: crate::codes::Discipline = crate::codes::Discipline::Electrical;
     const KEY: &'static str = "service";
     fn check(&self) -> Result<(), String> {
-        numbers_fit("service", &serde_json::to_value(self).map_err(|e| e.to_string())?)
+        numbers_fit("service", &serde_json::to_value(self).map_err(|e| e.to_string())?)?;
+        self.tables_fit()
+    }
+}
+
+impl ServiceRules {
+    /// What a table must be for a row to be picked as printed: a range that runs up from where it starts, a phase count of 1 to
+    /// 3, a conductor with a section, and Tabela 15's bands ending open, so no load falls past them.
+    fn tables_fit(&self) -> Result<(), String> {
+        let range = |what: &str, lo: f64, hi: f64| {
+            if lo < hi { Ok(()) } else { Err(format!("service: {what} runs from {lo} up to {hi}: its start is below its end")) }
+        };
+        let phases = |what: &str, n: u8| {
+            if (1..=3).contains(&n) { Ok(()) } else { Err(format!("service: {what} has {n} phases, not 1, 2 or 3")) }
+        };
+        let section = |what: &str, mm2: &[f64]| {
+            if mm2.iter().all(|x| *x > 0.0) { Ok(()) } else { Err(format!("service: a conductor of {what} has no section (0 mm²)")) }
+        };
+        if let Some(t) = &self.installation {
+            for u in &t.commercial.uses {
+                if u.bands.last().is_none_or(|b| b.0.is_some()) {
+                    return Err(format!("service: Tabela 15's `{}` ends with a band with no end (null), so no load falls past it", u.use_));
+                }
+            }
+            for (system, rows) in &t.categories.systems {
+                for r in rows {
+                    let what = format!("{system} {}", r.name);
+                    phases(&what, r.phases)?;
+                    section(&what, &[r.cable, r.aluminium, r.earth])?;
+                }
+            }
+        }
+        if let Some(t) = &self.annexes {
+            for a in [&t.aerial, &t.aerial_120_240, &t.underground, &t.underground_submersible] {
+                for r in &a.rows {
+                    let what = format!("Anexo {} {}", a.annex, r.name);
+                    range(&what, r.lo, r.hi)?;
+                    if let Some(n) = r.connection.0 {
+                        phases(&what, n)?;
+                    }
+                    section(&what, &[r.connection.1, r.connection.2, r.entry.0, r.entry.1, r.earth])?;
+                }
+            }
+            for r in &t.aerial_delta.rows {
+                let what = format!("Anexo B {}", r.names.join("/"));
+                if let Some(n) = r.connection.0 {
+                    phases(&what, n)?;
+                }
+                section(&what, &[r.connection.1, r.connection.2, r.entry, r.earth])?;
+            }
+        }
+        if let Some(t) = &self.categories {
+            for r in &t.rows {
+                range(&r.name, r.lo, r.hi)?;
+                if let Some((lo, hi)) = r.demand {
+                    range(&format!("{}'s demand", r.name), lo, hi)?;
+                }
+                phases(&r.name, r.phases)?;
+                if r.wires <= r.phases {
+                    return Err(format!("service: {} has {} wires for {} phases: a neutral too", r.name, r.wires, r.phases));
+                }
+                section(&r.name, &[r.connection.0, r.connection.1, r.entry, r.earth.0, r.earth.1])?;
+            }
+        }
+        Ok(())
     }
 }
 

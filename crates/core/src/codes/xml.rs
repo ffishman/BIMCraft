@@ -136,12 +136,21 @@ fn known(d: Discipline, section: &str) -> Option<Vec<String>> {
     if def.read_by.is_empty() {
         return None;
     }
-    let lib = super::library(d, section)?;
-    // As the section types it: every rule it has, those with a default too.
-    match (def.read)(lib.sections.get(section)?) {
-        Ok(Value::Object(o)) => Some(o.keys().cloned().collect()),
-        _ => Some(lib.section(section)?.keys().cloned().collect()),
+    // Every code of the library that holds the section, as the section types it: every rule it has, those with a default
+    // too, and the parts one code leaves out and another has (a utility's `service` holds only its own tables).
+    let mut keys: Vec<String> = Vec::new();
+    for lib in super::of(d).filter(|c| c.sections.contains_key(section)) {
+        let read = match lib.sections.get(section).map(|v| (def.read)(v)) {
+            Some(Ok(Value::Object(o))) => o.keys().cloned().collect::<Vec<_>>(),
+            _ => lib.section(section).map(|o| o.keys().cloned().collect()).unwrap_or_default(),
+        };
+        for k in read {
+            if !keys.contains(&k) {
+                keys.push(k);
+            }
+        }
     }
+    if keys.is_empty() { None } else { Some(keys) }
 }
 
 /// The codes the file holds and what it holds that this version doesn't know.

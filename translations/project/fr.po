@@ -133,7 +133,7 @@ msgstr "Prise de données"
 msgid "Demand Factor"
 msgstr ""
 
-#: crates/core/src/commands.rs:13836
+#: crates/core/src/commands.rs:13864
 msgid "Dependent"
 msgstr "Dépendant"
 
@@ -218,9 +218,9 @@ msgstr "Éclairage électrique"
 msgid "Electrical Power"
 msgstr "Alimentation électrique"
 
-#: crates/core/src/commands.rs:13583
-#: crates/core/src/commands.rs:13598
-#: crates/core/src/commands.rs:18217
+#: crates/core/src/commands.rs:13611
+#: crates/core/src/commands.rs:13626
+#: crates/core/src/commands.rs:18245
 msgid "Elevation"
 msgstr "Élévation"
 
@@ -350,7 +350,7 @@ msgstr "Largeur du pied"
 msgid "Length"
 msgstr "Longueur"
 
-#: crates/core/src/commands.rs:8583
+#: crates/core/src/commands.rs:8611
 #: crates/core/src/model.rs:4410
 msgid "Level"
 msgstr "Niveau"
@@ -391,7 +391,7 @@ msgstr "Repère"
 msgid "Masking"
 msgstr "Masque"
 
-#: crates/core/src/commands.rs:11055
+#: crates/core/src/commands.rs:11083
 msgid "Mass"
 msgstr "Volume"
 
@@ -408,7 +408,7 @@ msgid "Membrane"
 msgstr "Membrane"
 
 #: crates/core/src/commands.rs:3766
-#: crates/core/src/commands.rs:16795
+#: crates/core/src/commands.rs:16823
 #: crates/core/src/family.rs:3429
 #: crates/core/src/model.rs:5907
 msgid "Metal"
@@ -508,7 +508,7 @@ msgstr ""
 msgid "Project"
 msgstr "Projet"
 
-#: crates/core/src/commands.rs:9310
+#: crates/core/src/commands.rs:9338
 msgid "Property Line"
 msgstr ""
 
@@ -540,7 +540,7 @@ msgstr ""
 msgid "Roof tiles"
 msgstr "Tuiles"
 
-#: crates/core/src/commands.rs:11280
+#: crates/core/src/commands.rs:11308
 msgid "Room"
 msgstr "Pièce"
 
@@ -576,8 +576,8 @@ msgstr "Chape"
 msgid "Seat Height"
 msgstr "Hauteur assise"
 
-#: crates/core/src/commands.rs:13518
-#: crates/core/src/commands.rs:18216
+#: crates/core/src/commands.rs:13546
+#: crates/core/src/commands.rs:18244
 msgid "Section"
 msgstr "Coupe"
 
@@ -748,7 +748,7 @@ msgstr "Hauteur non délimitée"
 msgid "Unclassified"
 msgstr ""
 
-#: crates/core/src/commands.rs:14072
+#: crates/core/src/commands.rs:14100
 msgid "Unnamed"
 msgstr "Sans nom"
 

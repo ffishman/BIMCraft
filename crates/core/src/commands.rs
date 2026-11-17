@@ -7292,7 +7292,42 @@ fn service_is(h: &crate::demand::ServiceRules, code: &str) -> bool {
     }
 }
 
+/// Code `code`'s `service` as the project holds it: the project's, where its amendment is that utility's and holds its part, else
+/// BIMCraft's; and whether it is not BIMCraft's as printed.
+fn service_held(m: &crate::model::Model, code: &str) -> (crate::demand::ServiceRules, bool) {
+    let lib = crate::demand::service(code).cloned().unwrap_or_default();
+    let project = m
+        .section_as::<crate::demand::ServiceRules>(crate::codes::Discipline::Electrical, "service")
+        .filter(|(h, own)| *own && service_is(h, code))
+        .map(|(h, _)| h);
+    match project {
+        Some(h) => {
+            let part = |x: &crate::demand::ServiceRules| match code {
+                "cpfl" => serde_json::to_value(&x.installation).ok(),
+                "enel" => serde_json::to_value(&x.annexes).ok(),
+                _ => serde_json::to_value(&x.categories).ok(),
+            };
+            let changed = part(&h) != part(&lib);
+            (h, changed)
+        }
+        None => (lib, false),
+    }
+}
+
+/// `demand`, saying for CPFL, Enel and Celesc where the project's tables are not the code's as printed (the sources it names are
+/// the code's).
 fn demand(s: &mut Session, p: &Value) -> R {
+    let mut r = demand_of(s, p)?;
+    let utility = p.get("utility").and_then(Value::as_str).unwrap_or_default();
+    if crate::demand::UTILITIES.contains(&utility)
+        && let Value::Object(o) = &mut r
+    {
+        o.insert("changed_by_project".into(), Value::Bool(service_held(&s.model, &utility.to_ascii_lowercase()).1));
+    }
+    Ok(r)
+}
+
+fn demand_of(s: &mut Session, p: &Value) -> R {
     use crate::demand::{self as d, Air, Load, Motor, OtherUse, SPECIAL_KINDS, Special, SpecialKind, System};
     let c = "demand";
     if !p.is_object() {
@@ -7351,14 +7386,7 @@ fn demand(s: &mut Session, p: &Value) -> R {
     };
     // Each of these utilities' tables is a part of `service` only its code has: the project's, where its code is that utility's
     // and it changed it; else BIMCraft's.
-    let code = utility.to_ascii_lowercase();
-    let held = s
-        .model
-        .section_as::<d::ServiceRules>(crate::codes::Discipline::Electrical, "service")
-        .filter(|(h, own)| *own && service_is(h, &code))
-        .map(|(h, _)| h)
-        .or_else(|| d::service(&code).cloned())
-        .unwrap_or_default();
+    let (held, _) = service_held(&s.model, &utility.to_ascii_lowercase());
     let residential = choice(c, p, "building", &["residential", "other"], "residential")? == "residential";
     if utility == "ENEL" {
         let t = held.annexes.as_ref().ok_or_else(|| bad(c, "GRI-0017's annexes did not read"))?;
